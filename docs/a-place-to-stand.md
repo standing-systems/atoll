@@ -963,8 +963,10 @@ guides/platforms/*, guides/training/rl-environments, reference/changelog.
 github.com/archil-data (archil-sdk, agent-swarm).
 
 **My own probes** of the live service on a free account, 5 November 2026 UTC, `aws-us-west-2`, from a
-laptop; scripts and raw results in `docs/research/probes/`.
+laptop. The measurements this document quotes are in `docs/measurements-2026-11-05.md`, and
+`node scripts/measure.mjs` reruns them.
 
 **My earlier projects:** actord (github.com/actor-systems/actord) and Standing Systems.
 
-Research notes behind this document are in `docs/research/`.
+My research notes behind this document, and the probes' scripts and raw results, aren't part of this
+repository.

@@ -245,7 +245,7 @@ What it doesn't guarantee:
 
 On a free account in `aws-us-west-2`, from a laptop, on 5 November 2026. `node scripts/measure.mjs`
 reruns every row on your own account and deletes what it creates; the full output, failures included, is
-in [docs/research/measurements-2026-11-05.md](docs/research/measurements-2026-11-05.md).
+in [docs/measurements-2026-11-05.md](docs/measurements-2026-11-05.md).
 
 | Operation | Measured |
 | --- | --- |

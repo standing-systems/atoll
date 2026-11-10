@@ -2,7 +2,7 @@
 // a scoped mount of the disk) and Snapshots (checkpoints, branches, and reads as of a checkpoint).
 //
 // Everything here leans on behavior measured against the live service on 5 November 2026
-// (aws-us-west-2, disk@1.11.0); docs/research/ has the numbers. The parts that matter most:
+// (aws-us-west-2, disk@1.11.0); docs/measurements-2026-11-05.md has the numbers. The parts that matter most:
 // - A whole-object PUT is atomic for readers. A create-only PUT (If-None-Match: *) has exactly one winner.
 // - Appends to an existing object are atomic. Concurrent first appends to a missing key fail with 409
 //   OperationAborted and write nothing, so retrying them is safe.

@@ -21,7 +21,7 @@ command and file name under the new name, so where it says `atoll init`, what ra
 | `atoll create` on real disks, empty and already in use | [the run below](#looking-before-laying-out) | 10 of 10 checks pass, in each of 2 runs |
 | A door's model keys, on a real door | [the run below](#a-doors-model-keys) | The door's model call went out with the key it was given, and Anthropic refused that made-up key; no key reached the disk |
 | The Claude Code plugin in a real session | `claude -p --plugin-dir plugins/claude` on Haiku | `/atoll:start` and an inspection question both answered from the disk, for $0.011 and $0.012 |
-| Reproducible measurements | `node scripts/measure.mjs --door` | [measurements-2026-11-05.md](research/measurements-2026-11-05.md) |
+| Reproducible measurements | `node scripts/measure.mjs --door` | [measurements-2026-11-05.md](measurements-2026-11-05.md) |
 
 ## The test suites
 
