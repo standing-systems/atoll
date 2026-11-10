@@ -40,15 +40,17 @@ Rules that hold for this whole skill:
    - what it needs from its owner: `asks/` and `outbox/`.
 4. **Where to look.** Three example systems show the conventions end to end, and `atoll init` scaffolds
    any of them as a project to read and run:
+   - `atoll init <dir> --template upgrade-steward` is the reference example. It keeps a checkout of a
+     repository on the disk and tries each new version of its dependencies on a branch, with commands in
+     microVMs, and asks before requesting a pull request. Its tests run locally; the system itself needs
+     an Archil disk, because a trial is a branch of one.
    - `atoll init <dir> --template release-radar` watches npm packages, keeps a ledger of the releases it
      has seen, tells its owner once per significant release, and writes a weekly digest. It uses no
-     model: one http effect, with the registry's answers kept as evidence.
+     model and no commands: one http effect, with the registry's answers kept as evidence. It runs whole
+     on a local atoll.
    - `atoll init <dir> --template promise-keeper` finds the commitments in messages through a model
      effect (a stand-in model unless a key is set), waits until each one is due, and asks before sending
      a reminder.
-   - `atoll init <dir> --template upgrade-steward` keeps a checkout of a repository on the disk and tries
-     each new version of its dependencies on a branch, with commands in microVMs. Its tests run locally;
-     the system itself needs an Archil disk, because a trial is a branch of one.
 
    Plain `atoll init <dir>` gives a one-part starter that reminds its owner of something at a set time.
 5. **What to do next.** Offer one step that fits the doctor result:

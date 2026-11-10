@@ -7,7 +7,7 @@ waits for days without forgetting, and asks you when a decision needs a person. 
 in one directory:
 
 ```text
-release-radar/
+upgrade-steward/
 ├── CHARTER.md    what I asked it to do, and what it must never do
 ├── STATUS.md     the five answers, rewritten after every tick
 ├── atoll.json    its parts, effects, schedules, and budgets
@@ -18,7 +18,7 @@ release-radar/
 ├── outbox/       things it wants to do in my name, waiting for my approval
 ├── notices/      what it told me
 ├── evidence/     receipts: every page it fetched, every model answer, every command's output
-├── workspace/    where untrusted commands run
+├── workspace/    where commands run: here, a checkout of the repository it keeps
 └── .atoll/       the code that runs it, the lease, the meter, checkpoints
 ```
 
@@ -28,9 +28,16 @@ CI job, a sandbox that sleeps until a webhook wakes it, or a microVM for a comma
 Anything that holds the disk's ID can take the next turn, so moving the agent to another machine means
 passing the ID.
 
+The one above is the [upgrade steward](examples/upgrade-steward), the example this page follows. It keeps a
+checkout of a repository on its disk with the dependencies installed. When a dependency publishes a new
+version, it tries it on a branch of the whole disk: one command in a microVM installs it and runs the
+tests. It tells me which upgrades are safe and which break, and asks before requesting a pull request.
+One keeps this repository, with GitHub Actions as its clock, and the repository's first three pull
+requests are its first three trials.
+
 [What a turn is](#what-a-turn-is) · [Why a disk](#why-a-disk) · [Try it](#try-it) ·
-[Guarantees](#what-atoll-guarantees) · [Measured](#measured-on-archil) · [Plugins](#plugins-for-claude-code-and-codex) ·
-[Design](docs/a-place-to-stand.md)
+[In code](#what-an-atoll-looks-like-in-code) · [Guarantees](#what-atoll-guarantees) ·
+[Measured](#measured-on-archil) · [Plugins](#plugins-for-claude-code-and-codex) · [Design](docs/a-place-to-stand.md)
 
 ## What a turn is
 
@@ -107,40 +114,79 @@ this repository:
 npm install && npm run build && npm link     # puts `atoll` on your PATH
 ```
 
-**A local atoll, with no account.** `atoll init` scaffolds a project with tests and guidance for Claude
-Code and Codex. The project's atoll lives in `.atoll-local/` until you give it a disk.
+**The upgrade steward, on Archil.** `atoll init` scaffolds a project with tests and guidance for Claude
+Code and Codex. Its tests need no account. The rest needs `ARCHIL_API_KEY` and `ARCHIL_REGION` in the
+environment, or in the project's `.env` the way Archil's own setup prompts keep them.
+
+```sh
+atoll init steward --template upgrade-steward && cd steward && npm install
+npm test                                    # replays what its commands really answered on Archil
+atoll create upgrade-steward --disk upgrade-steward
+atoll push --disk upgrade-steward           # the code goes onto the disk; one exec for the checkpoint
+atoll send repo repo.track '{"url": "https://github.com/<you>/<repo>"}' --disk upgrade-steward --tick
+atoll status --disk upgrade-steward         # the five answers
+atoll asks --disk upgrade-steward           # the pull requests it wants my approval for
+```
+
+The repository has to be a public one on GitHub, since the microVM that clones it holds no credential.
+That one tick clones it, installs it, and runs its tests. It starts a watch for each dependency and tries
+every one that is behind, each on a branch of the disk. For this repository that was six watches and
+three trials, and it took two and a half minutes. I ran it on Archil's Developer plan; its budgets add up
+to the Free plan's 1,000 tool calls a month.
+
+```sh
+atoll answer <ask-id> approve --disk upgrade-steward
+atoll why parts/trial/<name>/trial.json --disk upgrade-steward
+atoll cat workspace/repo/package.json --disk <branch-id>   # the checkout a trial left, on its branch
+atoll clock --github --disk upgrade-steward # a workflow that ticks it
+```
+
+An approval becomes a pull request through a workflow in the repository, and the machine that ticks
+needs a `GITHUB_TOKEN` to ask for it; [the example's README](examples/upgrade-steward/README.md) has both.
+
+`atoll why` walks back from a file to the event that started it all. This is the steward that keeps this
+repository, asked about `parts/trial/disk-1.12.0/trial.json`, its trial of Archil's own SDK (times and
+receipts left out):
+
+```text
+turn 50: trial/disk-1.12.0 handled pr.done from fx40.0
+  ← effect 49: pr.open (fx40.0) done
+    ← turn 40: trial/disk-1.12.0 handled trial.ran from fx31.0
+      ← effect 33: trial.run (fx31.0) done
+        ← turn 31: trial/disk-1.12.0 handled trial.start from watch/disk. Trying disk 1.12.0 (a minor release after 1.11.0) against standing-systems/atoll at 2ca9447
+          ← turn 25: watch/disk handled watch.fetched from fx7.0. npm's latest disk is 1.12.0, a minor release after 1.11.0; sent it to trial/disk-1.12.0
+            ← effect 9: npm.get (fx7.0) done
+            ← turn 7: watch/disk handled watch.set from repo. Started watching disk, which the repository has at 1.11.0
+            ← turn 6: repo handled repo.synced from fx3.0. Synced standing-systems/atoll to 2ca9447; installed its dependencies; its own tests pass at 2ca9447 (20 s); 6 watches updated, 0 dropped
+            ← effect 5: repo.sync (fx3.0) done
+            ← turn 3: repo handled repo.track from @owner. Started keeping standing-systems/atoll; tests run with `npm run typecheck && npm run build && npm test`
+That's the whole chain: it starts with an event from outside the atoll.
+```
+
+**A local atoll, with no account.** The steward needs a disk, because a trial is a branch of one. The two
+smaller examples run whole on a local atoll, which a project keeps in `.atoll-local/` until you give it a
+disk:
 
 ```sh
 atoll init radar --template release-radar && cd radar && npm install
-npm test                                    # the example's tests; no network
 atoll push                                  # bundle system.ts onto the (local) atoll
 atoll send watch/rivetkit watch.start '{"package": "rivetkit"}' --tick
-atoll status                                # the five answers
-atoll why parts/watch/rivetkit/latest.json  # the turn that wrote it, and every cause before it
-```
-
-**The same atoll on Archil.** With `ARCHIL_API_KEY` and `ARCHIL_REGION` in the environment, or in the
-project's `.env` the way Archil's own setup prompts keep them (a free account works):
-
-```sh
-atoll create radar --disk radar             # one of the Free plan's five disks
-atoll push --disk radar                     # the code goes onto the disk; one exec for the checkpoint
-atoll send watch/rivetkit watch.start '{"package": "rivetkit"}' --disk radar --tick
-atoll ls --disk radar                       # the disk's files, without mounting it
-atoll clock --crontab --disk radar          # a line that ticks it every 15 minutes
+atoll status
 ```
 
 `atoll create` looks before it writes. On a disk that already has files, it shows the top level and
-stops: `--prefix atolls/radar` gives the atoll a folder of its own, and `--alongside` puts it beside
+stops: `--prefix atolls/steward` gives the atoll a folder of its own, and `--alongside` puts it beside
 them. It never overwrites a file either way.
 
-**A door that sleeps.** A webhook needs an address. `atoll door up` creates a small sandbox that mounts
+**A door that sleeps.** The steward doesn't need one, but a system that takes webhooks needs an
+address. `atoll door up` creates a small sandbox that mounts
 the disk in conditional mode and runs `atoll serve` from the copy of the runtime stored on the disk. It
 pauses when idle, costs nothing while paused, and a request with its port token wakes it. It works with
 the model keys its code calls its models with and no others, and it won't come up if a model effect with
 no stand-in would have no key. On an Archil plan that can set a sandbox's network policy, the door reaches
 only the hosts its effects declare, and Archil adds those keys to its requests, so the door never holds
-them. On the Free plan it holds them, and reaches Archil's managed allowlist.
+them. On the Free plan it holds them, and reaches Archil's managed allowlist. With the release radar on a
+disk named `radar`:
 
 ```sh
 atoll door up --disk radar
@@ -151,58 +197,70 @@ atoll door down --disk radar
 ## What an atoll looks like in code
 
 An atoll is declared in one `system.ts`. Parts are directories; handlers get a turn. This is part of the
-release radar in `examples/release-radar`:
+upgrade steward in `examples/upgrade-steward`, with the checks and the wording of its notices cut:
 
 ```ts
 export default defineSystem({
-  name: "release-radar",
+  name: "upgrade-steward",
   charter,
   parts: {
-    watch: {
-      purpose: "Tell me about each new version of this package on npm",
-      instances: true, // one directory per package: parts/watch/<name>/
-      schedules: [{ every: "1h", send: "watch.poll" }],
+    repo: { purpose: "Keep a checkout of my repository up to date, with its dependencies installed and its own tests run", schedules: [{ every: "6h", send: "repo.sync" }], on: { /* ... */ } },
+    watch: { purpose: "Send each new version of this dependency to a trial", instances: true, schedules: [{ every: "6h", send: "watch.poll" }], on: { /* ... */ } },
+    trial: {
+      purpose: "Try one new version of one dependency on a copy of the checkout, and tell me whether the tests still pass",
+      instances: true, // one directory per package and version: parts/trial/typescript-7.0.2/
       on: {
-        "watch.poll": async (t) => {
-          const w = await t.json<WatchFile>("watch.json");
-          t.effect("npm.get", { url: w.url, pick: ["name", "version"] }, { then: "watch.fetched" });
-          t.wait({ for: "watch.fetched", reason: `npm's answer about ${w.package}` });
+        "trial.start": async (t) => {
+          const { package: name, version } = t.event.body;
+          if (await t.json<TrialFile>("trial.json")) return t.note(`Already tried ${name} ${version}`);
+          // Another part's files are there to read: what the repository has, and how its own tests did.
+          const repo = await t.json<RepoFile>("/parts/repo/repo.json");
+          const trial = { package: name, version /* , what it replaces, and where package.json lists it */ };
+          t.write("trial.json", { ...trial, state: "running", head: repo.head });
+          t.effect("trial.run", { command: trialCommand(trial, repo.test) }, { then: "trial.ran" });
+          t.wait({ for: "trial.ran", reason: `${name} ${version} to be installed and tested on a branch` });
         },
-        "watch.fetched": async (t) => {
-          const w = await t.json<WatchFile>("watch.json");
-          const reading = readLatest(t.event.body);
-          const latest = await t.json<LatestFile>("latest.json");
-          if (reading.ok && latest?.version !== reading.version) {
-            t.write("latest.json", { version: reading.version, previous: latest?.version ?? null, seenAt: t.now.toISOString(), evidence: t.event.evidence });
-            t.send("ledger", "release.seen", { name: w.package, version: reading.version }, { evidence: t.event.evidence });
+        "trial.ran": async (t) => {
+          const trial = await t.json<TrialFile>("trial.json");
+          const result = await execResult(t); // the command's output, and the branch it ran on
+          const summary = summaryOf<TrialSummary>(result, "trial"); // what the command reported about itself
+          const evidence = t.event.evidence;
+          if (summary.test !== 0) {
+            t.write("trial.json", { ...trial, state: "failed", branch: result.branch });
+            t.tell(`${trial.package} ${trial.version} breaks the tests. The checkout it left is on branch ${result.branch}.`, { evidence });
+            return t.done("it fails the tests");
           }
+          t.write("trial.json", { ...trial, state: "passed", branch: result.branch });
+          t.tell(`${trial.package} ${trial.version} is safe: the tests pass with it.`, { evidence });
+          t.effect("pr.open", { package: trial.package, version: trial.version, branch: result.branch, evidence /* ... */ }, { then: "pr.done" });
+          t.wait({ for: "pr.done", reason: "your answer about a pull request, and then GitHub's" });
         },
       },
     },
-    ledger: { purpose: "Keep one record of every release a watch sees, and tell me once about each major or minor one", on: { /* ... */ } },
-    digest: { purpose: "Write me a digest of the week's releases every Monday", schedules: [{ cron: "0 16 * * 1", send: "digest.due" }], on: { /* ... */ } },
   },
   effects: {
-    "npm.get": { kind: "http", allow: ["registry.npmjs.org"], budget: { calls: 5000, per: "month" } },
+    "npm.get": { kind: "http", allow: ["registry.npmjs.org"], budget: { calls: 10_000, per: "month" } },
+    // One command in a microVM, on a branch of the whole disk that is never merged back.
+    "trial.run": { kind: "exec", fork: true, merge: false, ignore: ["node_modules", ".git", ".steward"], idempotent: true, budget: { calls: 300, per: "month" } },
+    // It speaks for me, so it waits for my approval of exactly these arguments, and runs once.
+    "pr.open": { kind: "custom", approval: true, idempotent: false, run: async (args) => { /* ask GitHub for the pull request */ } },
   },
 });
 ```
 
-The digest doesn't message the ledger for its data; it reads the ledger's files. Parts share the
-environment and own their writes: a part may read anything in the atoll and write only under its own
-directory, which the runtime checks at commit.
+A trial is an instance named for its package and version, so a second report of the same release finds
+the directory already there. The trial doesn't message the `repo` part for what it knows; it reads the
+part's files. Parts share the environment and own their writes: a part may read anything in the atoll and
+write only under its own directory, which the runtime checks at commit. The checkout is in `workspace/`,
+where only commands write.
 
-The second example, `examples/promise-keeper`, takes messages in, has a model propose the commitments in
-them (a deterministic stand-in answers when no model key is set), validates the proposal in code, keeps
-one directory per promise, and when one is overdue drafts a reminder and asks before sending it. The
-approval is spent once, on exactly the text I approved or my edit of it.
-
-The third, `examples/upgrade-steward`, is the one that leans on Archil. It keeps a checkout of a
-repository on its disk with the dependencies installed, and when a dependency publishes a new version
-it tries it on a branch of the whole disk: one command in a microVM installs it and runs the tests. It
-tells me which upgrades are safe and which break, keeps each branch to look at, and asks before
-requesting a pull request. Against commander.js, a trial took between half a minute and a minute. This
-repository is kept by one, run from GitHub Actions: see `.github/workflows/`.
+There are two smaller examples. `examples/release-radar` watches npm packages, keeps a ledger with one
+file per release, tells me once about each major or minor one, and writes a weekly digest. It has no
+commands and no model, so it runs whole on a local atoll, and its tests replay two weeks of npm's real
+history. `examples/promise-keeper` takes messages in, has a model propose the commitments in them (a
+deterministic stand-in answers when no model key is set), validates the proposal in code, keeps one
+directory per promise, and when one is overdue drafts a reminder and asks before sending it. The approval
+is spent once, on exactly the text I approved or my edit of it.
 
 ## What Atoll guarantees
 
@@ -276,14 +334,24 @@ Atoll never shares a file through a mount.
 
 ## What it costs
 
-An atoll at rest is its files. After a simulated week of watching two packages hourly, served npm's real
-answers, the release radar's atoll is 994 KiB: 902 KiB of journal across 1,356 records, and the 338
-answers it fetched deduplicated to two receipts, because they didn't change. Archil charges $0.20 per
-GiB-month for that. A turn uses no tool calls.
-Hands cost $0.05 per 1,000 exec calls, and a forked command uses two. The door costs $0.055 per vCPU-hour and $0.020 per GiB-hour while awake and
-nothing while paused, so a door woken a hundred times a day for about twenty seconds each comes to about
-$1.25 a month. The Free plan's 1,000 tool calls and one sandbox-hour a month run both examples from a
-laptop or CI indefinitely, and a door for a demo but not as a permanent host.
+An atoll at rest is its files, at $0.20 per GiB-month. The steward's disk holds a checkout with its
+dependencies installed, about 130 MiB for commander.js: under three cents a month. Each trial's branch
+stores only what the trial changed.
+
+A turn uses no tool calls. Hands cost $0.05 per 1,000 exec calls: a sync is one and a trial is two, a
+checkpoint and then the command. The steward's first tick on this repository, a sync and three trials, was
+seven. Its budgets allow 400 syncs and 300 trials a month, which is at most 1,000 calls, or five cents.
+Watching the dependencies costs nothing on Archil, since the requests to npm come from whatever machine
+runs the tick.
+
+A system with no hands is smaller still. After a simulated week of watching two packages hourly, served
+npm's real answers, the release radar's atoll is 994 KiB: 902 KiB of journal across 1,356 records, and the
+338 answers it fetched deduplicated to two receipts, because they didn't change.
+
+The door costs $0.055 per vCPU-hour and $0.020 per GiB-hour while awake and nothing while paused, so a
+door woken a hundred times a day for about twenty seconds each comes to about $1.25 a month. The Free
+plan's 1,000 tool calls and one sandbox-hour a month run the two smaller examples from a laptop or CI
+indefinitely, and a door for a demo but not as a permanent host.
 
 ## Plugins for Claude Code and Codex
 
@@ -322,7 +390,7 @@ The rest of what I learned, with the measurements behind each item, is in sectio
 Early: a one-person project, started 4 November 2026.
 
 - Built and tested: the atoll format, the runtime (turns, the journal, the lease, recovery, effects,
-  approvals, budgets, waits, schedules, questions, replay), the CLI, the Archil store, the door, both
+  approvals, budgets, waits, schedules, questions, replay), the CLI, the Archil store, the door, three
   examples, and both plugins. `npm run verify` runs everything that needs no account;
   `npm run test:live` runs the Archil tests and deletes what they create.
 - Not built yet: agent parts whose handler is a model loop, shell-script parts, and read-only context

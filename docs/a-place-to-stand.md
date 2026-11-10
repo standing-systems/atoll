@@ -772,6 +772,17 @@ The intended loop, which the skills encode:
 
 ## 11. Reference systems
 
+**Upgrade steward** (`examples/upgrade-steward`) is the reference system, and the one the README follows.
+It keeps a checkout of a repository in its workspace with the dependencies installed, watches each
+dependency on npm, and tries every newer version on a branch of the whole disk: one command in a microVM
+installs it and runs the repository's tests. It tells me which upgrades are safe and which break, holds
+every trial while the repository's own tests fail, and asks before requesting a pull request. It is
+deterministic: no model. It shows hands: `exec` effects over a real tree, trials that are never merged, and
+a part instance per package and version as the dedupe. Run against commander.js, a branch of the installed
+checkout took 114 ms and a trial between half a minute and a minute, and one upgrade it tried really did
+break a test suite. One keeps this repository, with GitHub Actions as its clock, and its first three trials
+became the repository's first three pull requests.
+
 **Release radar** (`examples/release-radar`): watches npm packages, keeps a ledger of releases it has seen,
 classifies them by semver, tells me once per significant release, and writes a weekly digest. It is
 deterministic: no model. It shows instances as directories, schedules, an idempotent `http` effect with
@@ -783,17 +794,6 @@ the Free plan's sandbox allowlist, so the whole system runs on a free account, i
 through a `model` effect (a stand-in model by default), keeps one directory per promise, waits until each
 is due, and when one is overdue, drafts a reminder and asks before sending it. It shows "models propose;
 code decides," asks with defaults and expiry, an approval spent once on the exact text, and a budget.
-
-**Upgrade steward** (`examples/upgrade-steward`): keeps a checkout of a repository in its workspace with
-the dependencies installed, watches each dependency on npm, and tries every newer version on a branch of
-the whole disk: one command in a microVM installs it and runs the repository's tests. It tells me which
-upgrades are safe and which break, holds every trial while the repository's own tests fail, and asks
-before requesting a pull request. It is deterministic: no model. It is the reference system for hands:
-`exec` effects over a real tree, trials that are never merged, and a part instance per package and
-version as the dedupe. Run against commander.js, a branch of the installed checkout took 114 ms and a
-trial between half a minute and a minute, and one upgrade it tried really did break a test suite. One
-keeps this repository, with GitHub Actions as its clock, and its first three trials became the
-repository's first three pull requests.
 
 ## 12. Trust, secrets, and what runs where
 
