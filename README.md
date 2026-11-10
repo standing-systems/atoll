@@ -201,7 +201,8 @@ The third, `examples/upgrade-steward`, is the one that leans on Archil. It keeps
 repository on its disk with the dependencies installed, and when a dependency publishes a new version
 it tries it on a branch of the whole disk: one command in a microVM installs it and runs the tests. It
 tells me which upgrades are safe and which break, keeps each branch to look at, and asks before
-requesting a pull request. Against commander.js, a trial took between half a minute and a minute.
+requesting a pull request. Against commander.js, a trial took between half a minute and a minute. This
+repository is kept by one, run from GitHub Actions: see `.github/workflows/`.
 
 ## What Atoll guarantees
 

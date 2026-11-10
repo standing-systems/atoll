@@ -791,7 +791,9 @@ upgrades are safe and which break, holds every trial while the repository's own 
 before requesting a pull request. It is deterministic: no model. It is the reference system for hands:
 `exec` effects over a real tree, trials that are never merged, and a part instance per package and
 version as the dedupe. Run against commander.js, a branch of the installed checkout took 114 ms and a
-trial between half a minute and a minute, and one upgrade it tried really did break a test suite.
+trial between half a minute and a minute, and one upgrade it tried really did break a test suite. One
+keeps this repository, with GitHub Actions as its clock, and its first three trials became the
+repository's first three pull requests.
 
 ## 12. Trust, secrets, and what runs where
 

@@ -329,6 +329,30 @@ branch's file from the CLI.
 
 All of it used 6 disks and 37 exec calls, and every disk was deleted.
 
+### On this repository, from GitHub Actions
+
+On 10 November 2026 UTC the repository was made public, without the research notes: the steward's microVM
+holds no credential, so it can clone only what is public. A steward was then set to keep the repository
+itself, on a disk named `upgrade-steward`, with GitHub Actions as its clock and nothing running on my
+machine. `ARCHIL_API_KEY` is a repository secret and the only credential involved.
+
+- **The first tick** (`atoll-tick.yml`, started by hand at 04:00 UTC) took 2 minutes 28 seconds: 20 turns
+  and 10 effects. It cloned the repository at `2ca9447`, installed it, and ran `npm run typecheck && npm
+  run build && npm test` in 20 s, all 202 tests passing in the microVM. It started six watches and found
+  three dependencies behind.
+- **Three trials, each on a branch,** all passed: `disk` 1.12.0 (install 5 s, tests 20 s), `@types/node`
+  26.6.6 (2 s, 21 s), and `vitest` 5.1.0 (8 s, 21 s). Each raised an approval.
+- **Each approval, answered through `atoll-answer.yml`,** took one turn. `pr.open` ran with the workflow's
+  own token, GitHub accepted the `repository_dispatch` event, and that event started `atoll-upgrade.yml`,
+  which opened pull requests 1, 2 and 3. A workflow's own token can't start another workflow in most
+  ways; this is one of the two it can.
+- **What the first pull requests got wrong.** The workflow ran Node 22, whose npm 10 dropped the `libc`
+  fields that npm 11 had written into the lockfile, so the one-line `@types/node` upgrade changed 35 more
+  lines. With Node 24, which is also what the trials ran on, the same pull request is 5 lines against 5.
+  I sent the three approved events again by hand to remake them; the steward itself asked once each.
+
+The organization had to allow GitHub Actions to create pull requests before any of this could work.
+
 ## What wasn't verified
 
 - **Months of standing operation.** The longest runs here are a simulated week in the tests and minutes
@@ -347,11 +371,12 @@ All of it used 6 disks and 37 exec calls, and every disk was deleted.
   reading `.env` is covered by the CLI tests. I didn't copy the real key into a new file to test it.
 - **Mounting an atoll's disk on my own machine.** The Free plan doesn't allow external mounts, which is
   why `atoll ls` and `atoll cat` exist.
-- **A pull request the steward asked for.** Its request to GitHub is tested against a local stand-in.
-  No `repository_dispatch` event has been sent to a real repository, and `github/atoll-upgrade.yml` has
-  never run.
-- **The steward on a clock, or on a repository of mine.** It ran for minutes, against one public
-  repository, with npm's answers pinned. It can't clone a private repository.
+- **The steward over days.** It keeps this repository now, but when this was written it had run for
+  minutes: one tick started by hand and three answers. No scheduled run had fired yet, no later sync had
+  found a new commit, and no upgrade it tried on this repository had failed. It can't clone a private
+  repository.
+- **`github/atoll-upgrade.yml` as the example ships it.** The copy that ran here has one more step, a
+  build.
 - **A command that outlasts the lease.** The runner renews its lease while an effect runs, and a test
   shows the renewals. On the live service the longest command took 47 s against a 60 s lease, so the
   renewals happened but were never what kept the lease.

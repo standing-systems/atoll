@@ -141,6 +141,30 @@ line to run myself.
 GitHub answers the event with an empty 204, so the steward knows the request was taken, not that the
 pull request exists. It says "I asked GitHub", not "I opened".
 
+Two things the workflow needs from the repository. Its organization, or the repository itself, has to
+allow GitHub Actions to create pull requests (Settings, Actions, General). And it should run the Node
+whose npm wrote the lockfile: the first pull requests I got were made by an older npm, which rewrote
+35 lines of the lockfile that had nothing to do with a one-line upgrade.
+
+## On GitHub Actions
+
+The Atoll repository is kept by a steward of its own, and nothing of it runs on my machine. Three
+workflows in its `.github/workflows/` do everything:
+
+- `atoll-tick.yml` is the clock. Twice an hour it builds the CLI and runs `atoll tick`, then writes
+  `atoll status` and the open questions to the run's summary. It gives the tick its own token, which is
+  enough to send the `repository_dispatch` event, and that event does start another workflow.
+- `atoll-answer.yml` answers a question from the Actions tab: I give it the question's ID and choose
+  approve or deny.
+- `atoll-upgrade.yml` is the workflow above, with one step added to rebuild the CLI that Atoll bundles
+  into its tree.
+
+The repository's secrets hold `ARCHIL_API_KEY`, and that is the only credential involved. The first tick
+took 2 minutes 28 seconds. It cloned the repository, installed it, and ran its type check, build and 202
+tests in 20 s. It started six watches, found three dependencies behind, and tried each on a branch: the
+`disk` SDK 1.12.0, `@types/node` 26.6.6, and `vitest` 5.1.0, about 20 s of tests each. All three passed. I
+approved all three from the Actions tab, and three pull requests opened.
+
 ## What it costs
 
 On Archil, a sync is one tool call and a trial is two (a checkpoint, then the command). Watching fifteen
@@ -162,5 +186,5 @@ disk does. `atoll status` counts them.
   `dependencies`, `devDependencies` and `optionalDependencies` of the top-level `package.json`.
 - **Long test suites.** A command has five minutes in a microVM. A sync that installs and tests, or a
   trial, has to fit in that.
-- **A pull request I have watched open.** The steward's request to GitHub is tested against a local
-  stand-in for its API. I haven't yet run `github/atoll-upgrade.yml` in a real repository.
+- **Merging.** It opens one pull request per upgrade and stops. Two that touch the same lockfile will
+  conflict once the first is merged.
