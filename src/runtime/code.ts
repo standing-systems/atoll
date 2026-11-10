@@ -121,7 +121,7 @@ export function manifestOf(system: SystemSpec, version: string, at: string): Man
           ...(e.idempotent !== undefined ? { idempotent: e.idempotent } : {}),
           ...(e.budget ? { budget: e.budget } : {}),
           ...(e.allow ? { allow: e.allow } : {}),
-          ...(e.kind === "exec" ? { scope: e.scope ?? "workspace", fork: Boolean(e.fork) } : {}),
+          ...(e.kind === "exec" ? { scope: e.scope ?? "workspace", fork: Boolean(e.fork), ...(e.fork && e.merge === false ? { merge: false } : {}), ...(e.ignore?.length ? { ignore: e.ignore } : {}) } : {}),
           ...(e.model ? { model: e.model } : {}),
         },
       ]),

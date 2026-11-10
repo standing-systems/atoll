@@ -13,7 +13,7 @@ installed `atoll` and falls back to the plugin's own build.
 | Command | What it does |
 | --- | --- |
 | `atoll doctor [--online]` | Node, the Archil API key and region (never printed), and the project; with `--online`, whether Archil accepts the key |
-| `atoll init <dir> [--template release-radar\|promise-keeper\|blank]` | Scaffold a project; never overwrites a file |
+| `atoll init <dir> [--template release-radar\|promise-keeper\|upgrade-steward\|blank]` | Scaffold a project; never overwrites a file |
 | `atoll create <name>` | Lay out an empty atoll; with `--disk <name>`, create that Archil disk first. Where files already are, it shows the top level and stops (`--prefix`, `--alongside`) |
 | `atoll push` | Check and bundle `system.ts`, store it on the atoll, make it current, checkpoint |
 | `atoll send <to> <type> [json]` | Deliver an event |
@@ -63,8 +63,11 @@ and test that a new atoll's `CHARTER.md` equals it.
   `idempotent` (default true only for http GET and HEAD and for notify), `budget`
   (`{ calls?, usd?, per: "day" | "month" }`), `allow` hosts for http and for any effect that reaches the
   network from a door (a door's network policy admits only the hosts its effects list), `scope` for exec
-  (default `workspace`), `model`, `maxUsd`, and `standIn` for a model, `describe` for an approval's
-  question, and `run(args, ctx)` for custom.
+  (default `workspace`), `fork` to run a command on a branch and merge it back only if nothing else wrote
+  the same files, `merge: false` to leave a forked command's changes on its branch when its outcome is a
+  verdict, `ignore` for directories such as `node_modules` that the runner shouldn't walk, `model`,
+  `maxUsd`, and `standIn` for a model, `describe` for an approval's question, and `run(args, ctx)` for
+  custom.
 - A **handler** is `(t, e) => void | Promise<void>`. `t.event`, `t.self`, `t.part`, `t.instance`, and
   `t.now` describe the turn. `t.read`, `t.bytes`, `t.json`, and `t.list` read files (relative paths are
   under the part's directory, `/...` is from the atoll's root), and `t.readEvidence(ref)` reads a

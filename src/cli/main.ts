@@ -37,7 +37,7 @@ export interface CommandInfo {
 
 export const COMMANDS: CommandInfo[] = [
   { name: "doctor", usage: "atoll doctor [--online]", summary: "Check Node, Archil credentials and region, and the project; offline unless --online; never prints a secret" },
-  { name: "init", usage: "atoll init <dir> [--template blank|release-radar|promise-keeper]", summary: "Scaffold a project; never overwrites" },
+  { name: "init", usage: "atoll init <dir> [--template blank|release-radar|promise-keeper|upgrade-steward]", summary: "Scaffold a project; never overwrites" },
   { name: "create", usage: "atoll create <name> [--disk <name|dsk-id>] [--prefix <folder>] [--charter <text>] [--alongside]", summary: "Create the Archil disk (or local directory) and lay out an empty atoll; where files already are, show the top level and stop unless --alongside" },
   { name: "push", usage: "atoll push [--entry system.ts] [--no-checkpoint] [--alongside]", summary: "Bundle system.ts, store it on the disk, make it current, checkpoint" },
   { name: "send", usage: "atoll send <to> <type> [json] [--tick]", summary: "Deliver an event" },
@@ -290,10 +290,10 @@ const commands: Record<string, (ctx: Ctx) => Promise<number>> = {
 
   async init(ctx) {
     const dir = ctx.args.positional[0];
-    if (!dir) throw new UsageError("atoll init <dir> [--template blank|release-radar|promise-keeper]");
+    if (!dir) throw new UsageError("atoll init <dir> [--template blank|release-radar|promise-keeper|upgrade-steward]");
     const template = str(ctx.args.flags.template) ?? "blank";
     const extra = template === "blank" ? {} : TEMPLATES[template];
-    if (!extra || (template !== "blank" && Object.keys(extra).length === 0)) throw new UsageError(`No template "${template}"; use blank, release-radar, or promise-keeper`);
+    if (!extra || (template !== "blank" && Object.keys(extra).length === 0)) throw new UsageError(`No template "${template}"; use blank, release-radar, promise-keeper, or upgrade-steward`);
     // An example brings its own system, charter and tests; from the blank project it takes only the scaffolding.
     const scaffold = Object.fromEntries(Object.entries(TEMPLATES.project ?? {}).filter(([path]) => template === "blank" || !/^(system\.ts|CHARTER\.md|test\/)/.test(path)));
     const files = { ...scaffold, ...extra };

@@ -187,10 +187,10 @@ sandbox-minutes:
   (two runs of the model-key test and one of the end-to-end test), plus one request to Anthropic with a
   made-up key, which it refused.
 
-Every disk and sandbox the tests created was deleted. One disk is left on purpose: `release-radar`,
+Every disk and sandbox the tests created was deleted. One disk was left on purpose: `release-radar`,
 the atoll from the run above, with its branch `verify-fork`. It was laid out before the rename, under
-`.stead/`, so the `atoll` CLI doesn't recognise it as an atoll, and nothing changes it. To remove it,
-delete the disk in the Archil console; its branches and checkpoints go with it.
+`.stead/`, so the `atoll` CLI didn't recognise it. It was deleted on 9 November 2026, and its branch went
+with it, which left the account with no disks.
 
 ## The door's network policy
 
@@ -279,6 +279,56 @@ The name `atoll` on npm belongs to an unrelated package, so the package is `@sta
 that is what a project imports. It isn't published. `atoll init` points a new project at the checkout it
 runs from, and every `npx` it writes has `--no-install`, so nothing fetches the other package by accident.
 
+## The upgrade steward
+
+Added on 9 November 2026 (10 November in UTC, the date its records carry). `examples/upgrade-steward` is a
+third reference system: it keeps a checkout of a repository on its disk, and tries each new version of
+each dependency on a branch of the whole disk. Building it added two options to `exec` effects, `merge:
+false` and `ignore`, and made a runner renew its lease while an effect runs.
+
+A probe came first, on a throwaway disk, to see whether a microVM could do the work at all. It could: it
+reached GitHub and the npm registry, cloned [commander.js](https://github.com/tj/commander.js) at
+v12.1.0 in 2.2 s, ran `npm ci` in 32.6 s (9,710 files), and ran the tests. A checkpoint took 171 ms and a
+branch 114 ms. On the branch, installing one newer package took 5.7 s. Hashing every file under the
+workspace, as the runner did around each command then, took 18.4 s for 9,957 files, which is why `ignore`
+exists.
+
+What ran offline:
+
+- `npm run verify`: 6 of 6 gates pass, with 202 tests in 13 files (168 in 12 before).
+- `examples/upgrade-steward/test/` (29 tests) replays what the steward's commands really answered on
+  Archil, recorded by the live test below. One test runs both commands for real, in a shell, against a
+  git repository it makes in a temporary directory: a clone, an install, a sync that skips what hasn't
+  changed, trials that pass, break and can't install, and a repository that isn't there. Three more run
+  the request to GitHub against a local stand-in for its API.
+- `test/runtime/hands.test.ts` (10 tests, 6 before) covers ignored directories and commands that are
+  never merged, and `test/runtime/semantics.test.ts` has one more, for the lease.
+- Each of 19 behaviours those tests cover was undone in turn, and a test failed every time.
+- A project scaffolded with `atoll init --template upgrade-steward` installed, typechecked, passed its
+  29 tests, and passed `atoll check`.
+
+What ran against the live service, on the Developer plan in `aws-us-west-2`: `test/live/steward.test.ts`,
+twice, and `test/live/fork.test.ts` once more, since the forked-command code changed. All passed. The
+steward's test keeps commander.js at v12.1.0, with npm stubbed to name two versions and the registry,
+git and the tests all real:
+
+| | First run, 03:04 UTC | Second run, 03:25 UTC |
+| --- | --- | --- |
+| The first tick: clone, install, tests, 15 watches, two trials | 179 s | 233 s |
+| The repository's own tests at head | 32 s | 47 s |
+| typescript 7.0.2 on a branch: install, then tests (one suite fails) | 5 s, 22 s | 6 s, 46 s |
+| prettier 3.9.10 on a branch: install, then tests (all pass) | 2 s, 27 s | 2 s, 36 s |
+| prettier 99.99.99 on a branch (npm has no such version), whole tick | 9.8 s | 10.6 s |
+| A second sync with nothing new upstream, whole tick | 9.0 s | 9.7 s |
+
+The test also read the branches afterwards through the object API. The typescript branch had typescript
+7.0.2 installed, the prettier branch had prettier 3.9.10 and typescript 5.4.5, and the main disk still had
+5.4.5 and 3.2.5, with its `package.json` unchanged. Only the passing trial raised an approval, and
+approving it with no `GITHUB_TOKEN` sent nothing. Separately, `atoll cat --disk <branch id>` read a
+branch's file from the CLI.
+
+All of it used 6 disks and 37 exec calls, and every disk was deleted.
+
 ## What wasn't verified
 
 - **Months of standing operation.** The longest runs here are a simulated week in the tests and minutes
@@ -297,5 +347,13 @@ runs from, and every `npx` it writes has `--no-install`, so nothing fetches the 
   reading `.env` is covered by the CLI tests. I didn't copy the real key into a new file to test it.
 - **Mounting an atoll's disk on my own machine.** The Free plan doesn't allow external mounts, which is
   why `atoll ls` and `atoll cat` exist.
+- **A pull request the steward asked for.** Its request to GitHub is tested against a local stand-in.
+  No `repository_dispatch` event has been sent to a real repository, and `github/atoll-upgrade.yml` has
+  never run.
+- **The steward on a clock, or on a repository of mine.** It ran for minutes, against one public
+  repository, with npm's answers pinned. It can't clone a private repository.
+- **A command that outlasts the lease.** The runner renews its lease while an effect runs, and a test
+  shows the renewals. On the live service the longest command took 47 s against a 60 s lease, so the
+  renewals happened but were never what kept the lease.
 - **A door without a network policy, since the change.** The Free plan's path is tested only against a
   stand-in for Archil ([the section above](#the-doors-network-policy)).

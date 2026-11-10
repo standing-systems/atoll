@@ -47,6 +47,8 @@ An effect has a `kind` and a policy:
 | `allow` | http; any kind run from a door | The hosts it may reach, such as `registry.npmjs.org` or `*.example.com`. Required for http, where the runner checks each request. A door's network policy admits the hosts any effect lists and no others, so a custom or exec effect that reaches the network from a door lists them too |
 | `scope` | exec | The directory the command's mount is limited to. Defaults to `workspace` |
 | `fork` | exec | Run on a branch, and merge back only if nothing else wrote the same files |
+| `merge` | exec with `fork` | `false` leaves what the command did on its branch and copies nothing back: the result names the branch, whether the command passed or failed. For a trial, whose outcome is a verdict. Defaults to true |
+| `ignore` | exec | Directory names, such as `node_modules`, that the runner doesn't look into when it works out what a command changed. Changes there aren't reported, and a forked command's changes there stay on its branch |
 | `model` | model | `"stand-in"`, `"anthropic/<model>"`, or `"openai/<model>"` |
 | `maxUsd` | model | The most one call may cost, counted against the budget when the price is unknown |
 | `standIn` | model | `(args) => answer`: a deterministic answer used when the runner has no key for the model, and in tests. Without one, a call on a runner without the key fails, and costs nothing |

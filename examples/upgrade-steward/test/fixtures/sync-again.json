@@ -1,0 +1,11 @@
+{
+  "exitCode": 0,
+  "stdout": "__STEWARD__ {\"kind\":\"sync\",\"stage\":\"done\",\"head\":\"970ecae402b253de691e6a9066fea22f38fe7431\",\"install\":\"skipped\",\"test\":\"skipped\",\"seconds\":0,\"deps\":[{\"name\":\"@eslint/js\",\"section\":\"devDependencies\",\"spec\":\"^8.56.0\",\"installed\":\"8.56.0\"},{\"name\":\"@types/jest\",\"section\":\"devDependencies\",\"spec\":\"^29.2.4\",\"installed\":\"29.5.6\"},{\"name\":\"@types/node\",\"section\":\"devDependencies\",\"spec\":\"^20.2.5\",\"installed\":\"20.12.7\"},{\"name\":\"eslint\",\"section\":\"devDependencies\",\"spec\":\"^8.30.0\",\"installed\":\"8.56.0\"},{\"name\":\"eslint-config-prettier\",\"section\":\"devDependencies\",\"spec\":\"^9.1.0\",\"installed\":\"9.1.0\"},{\"name\":\"eslint-plugin-jest\",\"section\":\"devDependencies\",\"spec\":\"^28.3.0\",\"installed\":\"28.3.0\"},{\"name\":\"eslint-plugin-jsdoc\",\"section\":\"devDependencies\",\"spec\":\"^48.1.0\",\"installed\":\"48.1.0\"},{\"name\":\"globals\",\"section\":\"devDependencies\",\"spec\":\"^13.24.0\",\"installed\":\"13.24.0\"},{\"name\":\"jest\",\"section\":\"devDependencies\",\"spec\":\"^29.3.1\",\"installed\":\"29.7.0\"},{\"name\":\"prettier\",\"section\":\"devDependencies\",\"spec\":\"^3.2.5\",\"installed\":\"3.2.5\"},{\"name\":\"prettier-plugin-jsdoc\",\"section\":\"devDependencies\",\"spec\":\"^1.3.0\",\"installed\":\"1.3.0\"},{\"name\":\"ts-jest\",\"section\":\"devDependencies\",\"spec\":\"^29.0.3\",\"installed\":\"29.1.1\"},{\"name\":\"tsd\",\"section\":\"devDependencies\",\"spec\":\"^0.31.0\",\"installed\":\"0.31.0\"},{\"name\":\"typescript\",\"section\":\"devDependencies\",\"spec\":\"^5.0.4\",\"installed\":\"5.4.5\"},{\"name\":\"typescript-eslint\",\"section\":\"devDependencies\",\"spec\":\"^7.0.1\",\"installed\":\"7.0.1\"}]}\n",
+  "stderr": "",
+  "truncated": false,
+  "changed": {
+    "added": 0,
+    "modified": 0,
+    "deleted": 0
+  }
+}

@@ -25,7 +25,7 @@ and writes only under its own directory, which the runtime checks at commit.
 | Needs the owner's yes before it runs | `approval: true` on the effect | The runner writes the exact arguments to `outbox/` and opens an ask; approval spends once, on exactly those arguments |
 | Needs a decision from the owner | `t.ask(...)` from the part that owns the item, answered as `ask.answered` or `ask.expired` | Every ask has a default and an expiry, so nothing waits on the owner forever |
 | Is a judgment with fixed answers, or facts pulled from text | A `model` effect of the part that owns the item, with a `standIn` and a checked answer | The model proposes; the owning part's code decides |
-| Runs an untrusted command | An `exec` effect with a `scope` (default `workspace`), or `fork: true` to run it on a branch | The command gets a mount of one subdirectory. A forked command merges back only if nothing else wrote the same files |
+| Runs an untrusted command | An `exec` effect with a `scope` (default `workspace`), or `fork: true` to run it on a branch | The command gets a mount of one subdirectory. A forked command merges back only if nothing else wrote the same files, or never, with `merge: false`, when what you want from it is a verdict |
 | Is a pure function of its inputs: parse, format, classify by rule | A function in `system.ts` or a module beside it | No state and no waits: a part would add a hop for nothing |
 
 ## Over-splits the critic will flag

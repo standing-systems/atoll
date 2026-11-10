@@ -326,5 +326,5 @@ export interface Manifest {
   pushedAt: string;
   owner?: { name?: string; timezone?: string };
   parts: Record<string, { purpose: string; instances: boolean; handles: string[]; schedules: { every?: string; cron?: string; tz?: string; send: string }[] }>;
-  effects: Record<string, { kind: string; approval: boolean; idempotent?: boolean; budget?: unknown; allow?: string[]; scope?: string; fork?: boolean; model?: string }>;
+  effects: Record<string, { kind: string; approval: boolean; idempotent?: boolean; budget?: unknown; allow?: string[]; scope?: string; fork?: boolean; merge?: boolean; ignore?: string[]; model?: string }>;
 }

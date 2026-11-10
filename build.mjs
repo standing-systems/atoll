@@ -23,7 +23,7 @@ function filesUnder(root) {
 
 function generateTemplates() {
   const templates = { project: filesUnder(join(here, "templates", "project")) };
-  for (const example of ["release-radar", "promise-keeper"]) {
+  for (const example of ["release-radar", "promise-keeper", "upgrade-steward"]) {
     const files = filesUnder(join(here, "examples", example));
     // An example's own package.json and tsconfig belong to this repository; the project template's apply.
     delete files["package.json"];

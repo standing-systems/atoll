@@ -82,6 +82,9 @@ around, and most of what an agent needs is context.
 - **A command can be a transaction.** An `exec` effect with `fork: true` checkpoints the disk, runs on a
   branch, and merges back only if every file it touched still holds, on the main atoll, what the branch
   started from. Otherwise nothing from the branch lands and the part is told which files conflicted.
+- **Or a trial.** With `merge: false` as well, nothing is copied back at all: the command's verdict
+  returns, and the branch keeps the tree that produced it. A branch of a checkout with 9,710 installed
+  files took 114 ms to make.
 - **Untrusted code gets one directory.** Commands run in Archil's serverless exec with the disk mounted
   and scoped to `workspace/`, so they can't read or rewrite the journal, the questions, the lease, or
   the code, and every file they change is recorded against the effect that changed it. Exec carries no
@@ -194,6 +197,12 @@ them (a deterministic stand-in answers when no model key is set), validates the 
 one directory per promise, and when one is overdue drafts a reminder and asks before sending it. The
 approval is spent once, on exactly the text I approved or my edit of it.
 
+The third, `examples/upgrade-steward`, is the one that leans on Archil. It keeps a checkout of a
+repository on its disk with the dependencies installed, and when a dependency publishes a new version
+it tries it on a branch of the whole disk: one command in a microVM installs it and runs the tests. It
+tells me which upgrades are safe and which break, keeps each branch to look at, and asks before
+requesting a pull request. Against commander.js, a trial took between half a minute and a minute.
+
 ## What Atoll guarantees
 
 Each guarantee has a test that would fail without it.
@@ -209,6 +218,8 @@ Each guarantee has a test that would fail without it.
 | A timer fires once per due time; a schedule keeps its cadence, and a missed one fires once, not once per missed period | `test/runtime/semantics.test.ts` (timers, schedule cadence) |
 | Replaying the journal through the code that ran reproduces every turn | `test/runtime/semantics.test.ts` (replay) |
 | A forked command merges back only if nothing changed the same files meanwhile | `test/runtime/hands.test.ts`; live on Archil in `test/live/fork.test.ts` |
+| A command declared with `merge: false` changes nothing on the main atoll, whether it passes or fails, and its branch is recorded either way | `test/runtime/hands.test.ts`; live on Archil in `test/live/steward.test.ts` |
+| A runner keeps its lease while an effect runs, however long the effect takes | `test/runtime/semantics.test.ts` (the lease) |
 | A command run as an effect sees none of the runner's keys, locally as on Archil, so none can end up in the atoll | `test/runtime/hands.test.ts` (environment) |
 | A model effect without its key answers with its stand-in, or fails and costs nothing if it has none; it never answers with nothing | `test/runtime/models.test.ts` |
 | A door gets only the model keys its code uses, and they never appear in a command, in what comes back, or on the disk | `test/door/sandbox.test.ts`; live on Archil in `test/live/door-models.test.ts` |

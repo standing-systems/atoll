@@ -628,6 +628,19 @@ a content-hash precondition provides the conflict check, and the commit protocol
 costs two tool calls and leaves one branch and one checkpoint behind, which atoll counts in `atoll status`
 because Archil can't delete them yet.
 
+Two options make this work over a big tree, and the upgrade steward (section 11) is built on both.
+
+- **`merge: false` makes the command a trial.** Steps 3 and 4 don't happen. The command's output and exit
+  code come back as its result, with the branch's ID, and the main atoll's files are exactly as they
+  were, whether the command passed or failed. The branch is what it leaves: the tree that produced the
+  verdict, readable by its ID. Because nothing lands on the main atoll, the effect's record claims no
+  changed files.
+- **`ignore` names directories the wrapper doesn't walk.** Step 2 hashes every file under the scope twice.
+  For a checkout with `node_modules` installed that was 9,957 files and took 18 s each way through the
+  mount, to produce a list nobody reads. An effect declared with `ignore: ["node_modules", ".git"]`
+  skips them at any depth. Their changes aren't reported, and on a forked command that does merge they
+  stay on the branch.
+
 ## 9. Changing a standing system
 
 A first deploy is the easy part. A standing system is valuable for as long as it can be changed safely
@@ -771,6 +784,15 @@ through a `model` effect (a stand-in model by default), keeps one directory per 
 is due, and when one is overdue, drafts a reminder and asks before sending it. It shows "models propose;
 code decides," asks with defaults and expiry, an approval spent once on the exact text, and a budget.
 
+**Upgrade steward** (`examples/upgrade-steward`): keeps a checkout of a repository in its workspace with
+the dependencies installed, watches each dependency on npm, and tries every newer version on a branch of
+the whole disk: one command in a microVM installs it and runs the repository's tests. It tells me which
+upgrades are safe and which break, holds every trial while the repository's own tests fail, and asks
+before requesting a pull request. It is deterministic: no model. It is the reference system for hands:
+`exec` effects over a real tree, trials that are never merged, and a part instance per package and
+version as the dedupe. Run against commander.js, a branch of the installed checkout took 114 ms and a
+trial between half a minute and a minute, and one upgrade it tried really did break a test suite.
+
 ## 12. Trust, secrets, and what runs where
 
 | Component | Trusted | Holds | Reaches |
@@ -907,6 +929,11 @@ built. Where the build taught me something, the text now says what the code does
   The live test of that fix also showed that a sandbox's own `env` doesn't reach its services, which is
   why the key goes in through the service's definition.
 
+- Forked commands were built for small workspaces. The first real one, a repository with its dependencies
+  installed, showed two things the design lacked: a command whose result is a verdict and shouldn't merge
+  (`merge: false`), and a tree too big to hash around every command (`ignore`). Both are in section 8.5.
+  It also showed that a command can outlast the runner's lease, so the runner now renews the lease while
+  an effect runs.
 - A door used to hold its model keys and reach whatever its plan's sandboxes could. On a plan that can set
   network policies it now reaches only what its effects declare, and Archil holds its keys (sections 8.2
   and 12). I built that from Archil's description of network policies, and the live tests then showed it

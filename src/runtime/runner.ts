@@ -521,11 +521,15 @@ export class Runner {
     }
     await this.recordEffect(entry, { state: "started" });
     let outcome: Outcome;
+    // An effect can outlast the lease: a command in a microVM may run for minutes. Renew while it does.
+    const alive = this.lease.keepAlive();
     try {
       outcome = await perform(entry, spec, this.env);
     } catch (error) {
       if (error instanceof MissingStub) throw error;
       outcome = { ok: false, error: (error as Error).message, evidence: [] };
+    } finally {
+      await alive.stop();
     }
     if (outcome.merge) await this.mergeBranch(entry, outcome);
     await this.finishEffect(entry, outcome, outcome.ok ? "done" : "failed");
@@ -579,9 +583,16 @@ export class Runner {
   /**
    * Merge a forked command's changes into the main atoll, but only if every file it touched still holds,
    * on the main atoll, the content the branch started from: optimistic concurrency for a bash command.
+   * A command declared with `merge: false` is never merged: its branch is recorded, whatever its exit
+   * code, because the branch is what it leaves behind.
    */
   private async mergeBranch(entry: OutboxEntry, outcome: Outcome): Promise<void> {
     const merge = outcome.merge!;
+    if (merge.keep) {
+      await this.store.put(paths.branch(`atoll-${entry.id}`), json({ name: `atoll-${entry.id}`, id: merge.branch, checkpoint: merge.checkpoint, effect: entry.id, at: this.now().toISOString(), merged: false, kept: true }));
+      outcome.result = { ...((outcome.result ?? {}) as Record<string, unknown>), merged: false, kept: true };
+      return;
+    }
     if (!outcome.ok || !this.env.snapshots) return;
     const scopePrefix = `${merge.scope}/`;
     const touched = [...merge.changed.added, ...merge.changed.modified, ...merge.changed.deleted];

@@ -173,6 +173,18 @@ export interface EffectSpec {
   scope?: string;
   /** exec: run on a branch and merge back only if nothing else wrote the same files. */
   fork?: boolean;
+  /**
+   * exec with fork: false leaves what the command did on its branch and never copies it back. The result
+   * names the branch, whether the command succeeded or not. For a trial whose outcome is a verdict, not a
+   * change. Defaults to true.
+   */
+  merge?: boolean;
+  /**
+   * exec: directory names, at any depth under the scope, that the runner doesn't look into when it works
+   * out what a command changed, such as "node_modules". Changes there aren't reported, and a forked
+   * command's changes there stay on its branch.
+   */
+  ignore?: string[];
   /** model: "stand-in", "anthropic/<model>", or "openai/<model>". */
   model?: string;
   /** model: the most one call may cost, used for budgets when a price is unknown. */
@@ -248,6 +260,12 @@ export function validateSystem(spec: SystemSpec): SpecProblem[] {
     if (!["http", "exec", "model", "notify", "custom"].includes(effect.kind)) add("BAD_EFFECT_KIND", where, `Unknown effect kind "${String(effect.kind)}"`);
     if (effect.kind === "custom" && typeof effect.run !== "function") add("CUSTOM_WITHOUT_RUN", where, "A custom effect needs a `run` function");
     if (effect.kind === "http" && (!effect.allow || effect.allow.length === 0)) add("HTTP_WITHOUT_ALLOW", where, "An http effect must list the hosts it may reach in `allow`");
+    if (effect.merge !== undefined && !(effect.kind === "exec" && effect.fork)) add("MERGE_WITHOUT_FORK", where, "`merge` applies to an exec effect with `fork: true`");
+    if (effect.ignore !== undefined) {
+      if (effect.kind !== "exec") add("IGNORE_WITHOUT_EXEC", where, "`ignore` applies to an exec effect");
+      const bad = (Array.isArray(effect.ignore) ? effect.ignore : [effect.ignore]).filter((name) => typeof name !== "string" || name === "" || name === "." || name === ".." || /[/\\\0]/.test(name));
+      if (bad.length) add("BAD_IGNORE", where, `\`ignore\` takes directory names such as "node_modules", not paths: ${bad.map((name) => JSON.stringify(name)).join(", ")}`);
+    }
     if (effect.budget && !effect.budget.usd && !effect.budget.calls) add("EMPTY_BUDGET", where, "A budget needs `usd` or `calls`");
     if (effect.budget && effect.budget.per !== "day" && effect.budget.per !== "month") add("BAD_BUDGET_PERIOD", where, "A budget's `per` is \"day\" or \"month\"");
   }

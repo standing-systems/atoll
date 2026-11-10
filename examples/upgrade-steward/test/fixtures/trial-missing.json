@@ -1,0 +1,15 @@
+{
+  "exitCode": 91,
+  "stdout": "npm warn ERESOLVE overriding peer dependency\nnpm warn While resolving: commander@12.1.0\nnpm warn Found: prettier@3.2.5\nnpm warn node_modules/prettier\nnpm warn   peer prettier@\"^3.0.0\" from prettier-plugin-jsdoc@1.3.0\nnpm warn   node_modules/prettier-plugin-jsdoc\nnpm warn     dev prettier-plugin-jsdoc@\"^1.3.0\" from the root project\nnpm warn   1 more (the root project)\nnpm warn\nnpm warn Could not resolve dependency:\nnpm warn peer prettier@\"^3.0.0\" from prettier-plugin-jsdoc@1.3.0\nnpm warn node_modules/prettier-plugin-jsdoc\nnpm warn   dev prettier-plugin-jsdoc@\"^1.3.0\" from the root project\nnpm error code ETARGET\nnpm error notarget No matching version found for prettier@99.99.99.\nnpm error notarget In most cases you or one of your dependencies are requesting a package version that doesn't exist.\nnpm error A complete log of this run can be found in: /root/.npm/_logs/2026-11-10T03_04_26_701Z-debug-0.log\n__STEWARD__ {\"kind\":\"trial\",\"stage\":\"install\",\"head\":\"970ecae402b253de691e6a9066fea22f38fe7431\",\"installed\":\"3.2.5\",\"install\":1,\"test\":null,\"installSeconds\":1,\"testSeconds\":0,\"changed\":[]}\n",
+  "stderr": "",
+  "truncated": false,
+  "changed": {
+    "added": [],
+    "modified": [],
+    "deleted": []
+  },
+  "branch": "dsk-0000000000111e44",
+  "checkpoint": "atoll-fx75-0-1794279862715",
+  "merged": false,
+  "kept": true
+}

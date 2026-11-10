@@ -40,8 +40,8 @@ export interface Outcome {
   evidence: EvidenceItem[];
   cost?: { usd?: number; calls?: number };
   changed?: { added: string[]; modified: string[]; deleted: string[] };
-  /** For forked exec: what to merge into the main atoll, or why not. */
-  merge?: { branch: string; checkpoint: string; changed: { added: string[]; modified: string[]; deleted: string[] }; base: Record<string, string | null>; scope: string };
+  /** For forked exec: what to merge into the main atoll, or, with `keep`, the branch to leave it on. */
+  merge?: { branch: string; checkpoint: string; changed: { added: string[]; modified: string[]; deleted: string[] }; base: Record<string, string | null>; scope: string; keep?: boolean };
 }
 
 function captured(content: string | Uint8Array, meta: EvidenceMeta, now: Date): EvidenceItem {
@@ -108,12 +108,15 @@ export async function overBudget(store: Store, entry: OutboxEntry, spec: EffectS
 
 // A wrapper run around exec commands: it lists the files under the scope before and after, runs the
 // command, and prints one JSON line with the output and the changes. Node exists in Archil's exec image.
+// It doesn't look into directories the effect ignores: hashing an installed node_modules through the
+// mount took 18 s each way for 10,000 files (probed 9 November 2026), and nobody reads that list.
 const WRAPPER = String.raw`
 const { spawnSync } = require("node:child_process");
 const { createHash } = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const cmd = Buffer.from(process.argv[1], "base64").toString("utf8");
+const ignore = new Set(JSON.parse(Buffer.from(process.argv[2] || "W10=", "base64").toString("utf8")));
 function manifest(dir) {
   const out = {};
   const walk = (d) => {
@@ -121,7 +124,7 @@ function manifest(dir) {
     try { names = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
     for (const e of names) {
       const p = path.join(d, e.name);
-      if (e.isDirectory()) walk(p);
+      if (e.isDirectory()) { if (!ignore.has(e.name)) walk(p); }
       else if (e.isFile()) { try { out[path.relative(dir, p)] = createHash("sha256").update(fs.readFileSync(p)).digest("hex"); } catch {} }
     }
   };
@@ -142,10 +145,10 @@ const o = cap(r.stdout), e = cap(r.stderr);
 process.stdout.write("\n__ATOLL__" + JSON.stringify({ exitCode: r.status === null ? 128 : r.status, stdout: o.text, stderr: e.text, truncated: o.truncated || e.truncated, changed: { added: added.sort(), modified: modified.sort(), deleted: deleted.sort() }, base }));
 `;
 
-function wrapCommand(command: string): string {
+function wrapCommand(command: string, ignore: string[] = []): string {
   const b64 = Buffer.from(command, "utf8").toString("base64");
   const script = Buffer.from(WRAPPER, "utf8").toString("base64");
-  return `node -e "$(printf %s ${script} | base64 -d)" ${b64}`;
+  return `node -e "$(printf %s ${script} | base64 -d)" ${b64} ${Buffer.from(JSON.stringify(ignore), "utf8").toString("base64")}`;
 }
 
 interface Wrapped {
@@ -167,11 +170,11 @@ function unwrap(stdout: string, stderr: string, exitCode: number): Wrapped {
 }
 
 /** Run a command on the local machine against a LocalStore's directory (development without Archil). */
-async function localExec(store: LocalStore, command: string, scope: string): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+async function localExec(store: LocalStore, command: string, scope: string, ignore: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   const dir = join(store.root, ...scope.split("/"));
   await mkdir(dir, { recursive: true });
   return new Promise((resolve) => {
-    execFile("sh", ["-c", wrapCommand(command)], { cwd: dir, env: commandEnv(), maxBuffer: 64 * 1024 * 1024 }, (error, stdout, stderr) => {
+    execFile("sh", ["-c", wrapCommand(command, ignore)], { cwd: dir, env: commandEnv(), maxBuffer: 64 * 1024 * 1024 }, (error, stdout, stderr) => {
       const code = error && typeof (error as any).code === "number" ? (error as any).code : 0;
       resolve({ exitCode: code, stdout: String(stdout), stderr: String(stderr) });
     });
@@ -249,11 +252,12 @@ export async function perform(entry: OutboxEntry, spec: EffectSpec, env: EffectE
       const command = String(args?.command ?? "");
       if (!command) return { ok: false, error: "An exec effect needs a `command`", evidence: [] };
       const scope = spec.scope ?? "workspace";
-      if (spec.fork) return forkedExec(entry, command, scope, env, now);
+      const ignore = spec.ignore ?? [];
+      if (spec.fork) return forkedExec(entry, command, scope, env, now, { ignore, keep: spec.merge === false });
       let raw: { exitCode: number; stdout: string; stderr: string };
-      if (env.hands) raw = await env.hands.exec({ command: wrapCommand(command), scope });
-      else if (env.store instanceof LocalStore) raw = await localExec(env.store, command, scope);
-      else if (hasHands(env.store)) raw = await env.store.exec({ command: wrapCommand(command), scope });
+      if (env.hands) raw = await env.hands.exec({ command: wrapCommand(command, ignore), scope });
+      else if (env.store instanceof LocalStore) raw = await localExec(env.store, command, scope, ignore);
+      else if (hasHands(env.store)) raw = await env.store.exec({ command: wrapCommand(command, ignore), scope });
       else return { ok: false, error: "This runner has no hands for exec effects", evidence: [] };
       const w = unwrap(raw.stdout, raw.stderr, raw.exitCode);
       const evidence = captured(JSON.stringify({ command, exitCode: w.exitCode, stdout: w.stdout, stderr: w.stderr }), { source: "exec", type: "application/json" }, now);
@@ -335,8 +339,12 @@ export async function perform(entry: OutboxEntry, spec: EffectSpec, env: EffectE
   }
 }
 
-/** exec with fork: checkpoint, branch, run on the branch, and report what to merge back. */
-async function forkedExec(entry: OutboxEntry, command: string, scope: string, env: EffectEnv, now: Date): Promise<Outcome> {
+/**
+ * exec with fork: checkpoint, branch, run on the branch, and report what to merge back. With `keep`,
+ * nothing is merged: the command's changes stay on the branch, and the main atoll's files are as they
+ * were, so the outcome claims no changes to them.
+ */
+async function forkedExec(entry: OutboxEntry, command: string, scope: string, env: EffectEnv, now: Date, options: { ignore: string[]; keep: boolean }): Promise<Outcome> {
   if (!env.snapshots) return { ok: false, error: "This runner can't fork the disk (no checkpoints or branches here)", evidence: [] };
   const safe = entry.id.replace(/[^A-Za-z0-9_-]/g, "-");
   const checkpoint = `atoll-${safe}-${now.getTime()}`;
@@ -344,7 +352,7 @@ async function forkedExec(entry: OutboxEntry, command: string, scope: string, en
   const branch = await env.snapshots.branch(`atoll-${safe}`, checkpoint);
   const branchStore = await env.snapshots.open(branch.id);
   if (!hasHands(branchStore)) return { ok: false, error: "The branch has no hands for exec", evidence: [] };
-  const raw = await branchStore.exec({ command: wrapCommand(command), scope });
+  const raw = await branchStore.exec({ command: wrapCommand(command, options.ignore), scope });
   const w = unwrap(raw.stdout, raw.stderr, raw.exitCode);
   const evidence = captured(JSON.stringify({ command, branch: branch.id, exitCode: w.exitCode, stdout: w.stdout, stderr: w.stderr }), { source: `exec:${branch.id}`, type: "application/json" }, now);
   return {
@@ -353,7 +361,7 @@ async function forkedExec(entry: OutboxEntry, command: string, scope: string, en
     ...(w.exitCode === 0 ? {} : { error: `exit ${w.exitCode} on branch ${branch.id}` }),
     evidence: [evidence],
     cost: { calls: 2 },
-    changed: w.changed,
-    merge: { branch: branch.id, checkpoint, changed: w.changed, base: w.base ?? {}, scope },
+    ...(options.keep ? {} : { changed: w.changed }),
+    merge: { branch: branch.id, checkpoint, changed: w.changed, base: w.base ?? {}, scope, ...(options.keep ? { keep: true } : {}) },
   };
 }

@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { testAtoll, type TestAtoll } from "../../src/testing.ts";
-import { LocalStore, deliver, tick, push, replay, readJournal } from "../../src/index.ts";
+import { LocalStore, defineSystem, deliver, tick, push, replay, readJournal } from "../../src/index.ts";
 import { Lease } from "../../src/runtime/lease.ts";
 import { counterSystem } from "./fixtures.ts";
 
@@ -64,6 +64,48 @@ describe("the lease", () => {
     const seqs = records.map((r) => r.seq);
     expect(seqs).toEqual([...seqs].sort((a, b) => a - b));
     expect(new Set(seqs).size).toBe(seqs.length);
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("keeps its lease alive while a slow effect runs, so no second runner starts the same work", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "atoll-slow-"));
+    const store = new LocalStore(dir);
+    const system = defineSystem({
+      name: "slow",
+      parts: {
+        worker: {
+          purpose: "Run one slow thing and note that it finished",
+          on: {
+            go: (t) => {
+              t.effect("slow", {}, { then: "went" });
+              t.wait({ for: "went", reason: "the slow thing" });
+            },
+            went: (t) => t.write("done.txt", "done"),
+          },
+        },
+      },
+      effects: { slow: { kind: "custom", run: () => null } },
+    });
+    const expiry = async () => {
+      const leases = await store.list(".atoll/lease/");
+      return Date.parse(JSON.parse(new TextDecoder().decode((await store.get(leases.at(-1)!.key))!)).expiresAt);
+    };
+    // The effect takes more than twice the lease's 200 ms, and looks at the lease before and after.
+    const seen: number[] = [];
+    const slow = async () => {
+      seen.push(await expiry());
+      await new Promise((resolve) => setTimeout(resolve, 450));
+      seen.push(await expiry());
+      return {};
+    };
+    const options = { store, system, codeVersion: "test", runner: "slow-runner", leaseTtlMs: 200, stubs: { slow }, stubsOnly: true };
+    await push({ ...options, version: "test" } as any);
+    await deliver(store, { to: "worker", type: "go" });
+    await tick(options);
+    // Renewed while the effect ran: by its end the lease reached past where it stood at the start.
+    expect(seen).toHaveLength(2);
+    expect(seen[1]! - seen[0]!).toBeGreaterThanOrEqual(200);
+    expect(new TextDecoder().decode((await store.get("parts/worker/done.txt"))!)).toBe("done");
     await rm(dir, { recursive: true, force: true });
   });
 

@@ -20,7 +20,7 @@
     },
     {
       "name": "init",
-      "usage": "atoll init <dir> [--template release-radar|promise-keeper|blank]",
+      "usage": "atoll init <dir> [--template release-radar|promise-keeper|upgrade-steward|blank]",
       "summary": "Scaffold a project",
       "readOnly": false
     },

@@ -1,11 +1,13 @@
 // Hands: exec effects scoped to the workspace, and commands as transactions (on a branch, merged back
-// only when nothing else wrote the same files).
+// only when nothing else wrote the same files). Also the two things a command over a big tree needs:
+// directories the runner doesn't look into, and a trial whose changes stay on its branch.
 
 import { afterEach, describe, expect, it } from "vitest";
 import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { defineSystem, why } from "../../src/index.ts";
+import { defineSystem, validateSystem, why } from "../../src/index.ts";
+import { LocalStore } from "../../src/store/local.ts";
 import { testAtoll, type TestAtoll } from "../../src/testing.ts";
 import { LocalHandsStore, LocalSnapshots } from "../../src/store/local-snapshots.ts";
 
@@ -16,7 +18,7 @@ const system = defineSystem({
       purpose: "Run the commands I give it against the workspace",
       on: {
         run: (t, e) => {
-          t.effect(e.body.fork ? "shell.fork" : "shell", { command: e.body.command }, { then: "ran" });
+          t.effect(e.body.effect ?? (e.body.fork ? "shell.fork" : "shell"), { command: e.body.command }, { then: "ran" });
           t.wait({ for: "ran", reason: "the command" });
         },
         ran: (t, e) => {
@@ -37,6 +39,10 @@ const system = defineSystem({
   effects: {
     shell: { kind: "exec", scope: "workspace" },
     "shell.fork": { kind: "exec", scope: "workspace", fork: true },
+    // "deps" stands for a directory like node_modules: big, rebuilt by commands, and nobody's to read.
+    "shell.quiet": { kind: "exec", scope: "workspace", ignore: ["deps"] },
+    "shell.fork.quiet": { kind: "exec", scope: "workspace", fork: true, ignore: ["deps"] },
+    "shell.trial": { kind: "exec", scope: "workspace", fork: true, merge: false, ignore: ["deps"] },
   },
 });
 
@@ -164,5 +170,79 @@ describe("commands as transactions", () => {
     expect(await s.read("workspace/report.txt")).toBe("concurrent\n");
     expect(await s.read("workspace/other.txt")).toBeNull();
     expect((await s.journal()).filter((r) => r.kind === "merge")).toEqual([]);
+  });
+});
+
+describe("commands over a big tree", () => {
+  const runs = async (s: TestAtoll) => Promise.all((await s.list("parts/builder/runs/")).map((path) => s.json(path)));
+
+  it("doesn't look into the directories an effect ignores, at any depth", async () => {
+    const s = await setup();
+    await s.send("builder", "run", { effect: "shell.quiet", command: "mkdir -p deps/a src/deps && echo 1 > deps/a/b.txt && echo 2 > src/deps/c.txt && echo 3 > src/main.txt && echo 4 > out.txt" });
+    await s.tick();
+    const [run] = await runs(s);
+    expect(run.result.exitCode).toBe(0);
+    expect(run.result.changed).toEqual({ added: ["out.txt", "src/main.txt"], modified: [], deleted: [] });
+    // The command still wrote them; the runner only didn't walk them.
+    expect(await s.read("workspace/deps/a/b.txt")).toBe("1\n");
+    expect(await s.read("workspace/src/deps/c.txt")).toBe("2\n");
+    // Without `ignore`, the same command reports every file.
+    await s.send("builder", "run", { command: "echo 5 > deps/a/d.txt" });
+    await s.tick();
+    expect((await runs(s)).map((r) => r.result.changed.added)).toContainEqual(["deps/a/d.txt"]);
+  });
+
+  it("merges what a forked command changed, and leaves what it ignores on the branch", async () => {
+    const s = await setup();
+    await s.send("builder", "run", { effect: "shell.fork.quiet", command: "echo one > report.txt && mkdir -p deps && echo big > deps/blob.bin" });
+    await s.tick();
+    const [run] = await runs(s);
+    expect(run.result).toMatchObject({ merged: true, conflicts: [], changed: { added: ["report.txt"] } });
+    expect(await s.read("workspace/report.txt")).toBe("one\n");
+    expect(await s.read("workspace/deps/blob.bin")).toBeNull();
+    expect(new TextDecoder().decode((await new LocalStore(run.result.branch).get("workspace/deps/blob.bin"))!)).toBe("big\n");
+  });
+
+  it("leaves a trial's changes on its branch, and records the branch whether the command passed or failed", async () => {
+    const s = await setup();
+    await s.send("builder", "run", { command: "echo base > report.txt" });
+    await s.tick();
+    await s.send("builder", "run", { effect: "shell.trial", command: "echo tried > report.txt && echo new > extra.txt && mkdir -p deps && echo x > deps/y.txt" });
+    await s.tick();
+    const passed = (await runs(s)).find((r) => r.result.branch);
+    expect(passed.ok).toBe(true);
+    expect(passed.result).toMatchObject({ exitCode: 0, merged: false, kept: true, changed: { added: ["extra.txt"], modified: ["report.txt"], deleted: [] } });
+    expect(passed.result).not.toHaveProperty("conflicts");
+    // The main atoll is as it was, and no merge was journaled. The effect claims no change to its files.
+    expect(await s.read("workspace/report.txt")).toBe("base\n");
+    expect(await s.read("workspace/extra.txt")).toBeNull();
+    expect((await s.journal()).filter((r) => r.kind === "merge")).toEqual([]);
+    const done = (await s.journal()).filter((r) => r.kind === "effect" && (r as any).state === "done") as any[];
+    expect(done.at(-1).changed).toBeUndefined();
+    // What it did is on the branch, ignored directories included.
+    const branch = new LocalStore(passed.result.branch);
+    expect(new TextDecoder().decode((await branch.get("workspace/report.txt"))!)).toBe("tried\n");
+    expect(await branch.get("workspace/deps/y.txt")).not.toBeNull();
+    expect((await s.status()).counts.branches).toBe(1);
+    expect(JSON.parse((await s.read(`.atoll/branches/atoll-${passed.effect}.json`))!)).toMatchObject({ id: passed.result.branch, merged: false, kept: true });
+
+    // A trial that fails is still a result: its branch holds the tree that failed.
+    await s.send("builder", "run", { effect: "shell.trial", command: "echo broke > report.txt; echo 'tests failed' >&2; exit 7" });
+    await s.tick();
+    const failed = (await runs(s)).find((r) => r.result.branch && r.result.exitCode === 7);
+    expect(failed.ok).toBe(false);
+    expect(failed.error).toContain("exit 7");
+    expect(failed.result).toMatchObject({ merged: false, kept: true, changed: { modified: ["report.txt"] } });
+    expect(new TextDecoder().decode((await new LocalStore(failed.result.branch).get("workspace/report.txt"))!)).toBe("broke\n");
+    expect(await s.read("workspace/report.txt")).toBe("base\n");
+    expect((await s.status()).counts.branches).toBe(2);
+  });
+
+  it("refuses a declaration that asks for either where it means nothing", () => {
+    const withEffect = (effect: object) => validateSystem({ ...system, effects: { odd: effect } } as never).map((p) => p.code);
+    expect(withEffect({ kind: "exec", merge: false })).toEqual(["MERGE_WITHOUT_FORK"]);
+    expect(withEffect({ kind: "http", allow: ["example.com"], ignore: ["node_modules"] })).toEqual(["IGNORE_WITHOUT_EXEC"]);
+    expect(withEffect({ kind: "exec", ignore: ["node_modules", "packages/app/dist", "..", ""] })).toEqual(["BAD_IGNORE"]);
+    expect(withEffect({ kind: "exec", fork: true, merge: false, ignore: ["node_modules", ".git"] })).toEqual([]);
   });
 });

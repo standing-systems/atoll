@@ -104,6 +104,25 @@ export class Lease {
     if (this.clock().getTime() - this.lastRenew > this.ttlMs / 4) await this.renew();
   }
 
+  /**
+   * Keep the lease alive while something slow runs: renew it every quarter of the TTL, on a timer, until
+   * stopped. A command in a microVM can run for minutes, and a lease left to lapse meanwhile would let a
+   * second runner take over and start the same effect.
+   */
+  keepAlive(): { stop(): Promise<void> } {
+    let renewing: Promise<void> = Promise.resolve();
+    const timer = setInterval(() => {
+      renewing = renewing.then(() => this.renew()).catch(() => {});
+    }, Math.max(50, this.ttlMs / 4));
+    timer.unref?.();
+    return {
+      stop: async () => {
+        clearInterval(timer);
+        await renewing;
+      },
+    };
+  }
+
   /** Throw LeaseLost if a later epoch exists. Called immediately before every commit append. */
   async fence(): Promise<void> {
     await this.maybeRenew();

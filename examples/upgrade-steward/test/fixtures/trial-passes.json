@@ -1,0 +1,29 @@
+{
+  "exitCode": 0,
+  "stdout": "PASS tests/help.longestOptionTermLength.test.js\nPASS tests/command.configureHelp.test.js\nPASS tests/help.longestArgumentTermLength.test.js\nPASS tests/help.optionTerm.test.js\nPASS tests/help.sortCommands.test.js\nPASS tests/argument.required.test.js\nPASS tests/argument.chain.test.js\nPASS tests/createCommand.test.js\nPASS tests/command.executableSubcommand.test.js\nPASS tests/command.option-misuse.test.js\nPASS tests/command.commandHelp.test.js\nPASS tests/command.createHelp.test.js\nPASS tests/options.bool.small.combined.test.js\nPASS tests/command.nested.test.js\nPASS tests/command.description.test.js\nPASS tests/command.summary.test.js\n\u001b[999D\u001b[K--------------------|---------|----------|---------|---------|-------------------------------\nFile                | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s             \n--------------------|---------|----------|---------|---------|-------------------------------\nAll files           |   99.25 |    97.18 |   99.59 |   99.39 |                               \n repo               |     100 |      100 |     100 |     100 |                               \n  index.js          |     100 |      100 |     100 |     100 |                               \n repo/lib           |   99.24 |    97.18 |   99.59 |   99.38 |                               \n  argument.js       |     100 |      100 |     100 |     100 |                               \n  command.js        |   98.93 |    96.21 |   99.38 |   99.13 | 1180-1183,1191-1193,1204,2343 \n  error.js          |     100 |      100 |     100 |     100 |                               \n  help.js           |     100 |      100 |     100 |     100 |                               \n  option.js         |     100 |      100 |     100 |     100 |                               \n  suggestSimilar.js |     100 |      100 |     100 |     100 |                               \n--------------------|---------|----------|---------|---------|-------------------------------\n\nTest Suites: 102 passed, 102 total\nTests:       1112 passed, 1112 total\nSnapshots:   0 total\nTime:        21.383 s\nRan all test suites.\n\n> commander@12.1.0 check:type:ts\n> tsd && tsc -p tsconfig.ts.json\n\n__STEWARD__ {\"kind\":\"trial\",\"stage\":\"test\",\"head\":\"970ecae402b253de691e6a9066fea22f38fe7431\",\"installed\":\"3.9.10\",\"install\":0,\"test\":0,\"installSeconds\":2,\"testSeconds\":27,\"changed\":[\"package-lock.json\",\"package.json\"]}\n",
+  "stderr": "",
+  "truncated": false,
+  "changed": {
+    "added": [],
+    "modified": [
+      "repo/coverage/clover.xml",
+      "repo/coverage/lcov-report/index.html",
+      "repo/coverage/lcov-report/repo/index.html",
+      "repo/coverage/lcov-report/repo/index.js.html",
+      "repo/coverage/lcov-report/repo/lib/argument.js.html",
+      "repo/coverage/lcov-report/repo/lib/command.js.html",
+      "repo/coverage/lcov-report/repo/lib/error.js.html",
+      "repo/coverage/lcov-report/repo/lib/help.js.html",
+      "repo/coverage/lcov-report/repo/lib/index.html",
+      "repo/coverage/lcov-report/repo/lib/option.js.html",
+      "repo/coverage/lcov-report/repo/lib/suggestSimilar.js.html",
+      "repo/package-lock.json",
+      "repo/package.json"
+    ],
+    "deleted": []
+  },
+  "branch": "dsk-0000000000111e0a",
+  "checkpoint": "atoll-fx69-0-1794279682095",
+  "merged": false,
+  "kept": true
+}
