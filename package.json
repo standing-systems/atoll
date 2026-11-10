@@ -1,0 +1,48 @@
+{
+  "name": "@standing-systems/atoll",
+  "version": "0.1.0",
+  "description": "Standing agents that live on Archil disks: a runtime, a CLI, and plugins for Claude Code and Codex",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": "Jared McFarland",
+  "bin": {
+    "atoll": "./dist/atoll.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "default": "./dist/index.mjs"
+    },
+    "./testing": {
+      "types": "./dist/types/testing.d.ts",
+      "default": "./dist/testing.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "engines": {
+    "node": ">=22.19"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:live": "ATOLL_LIVE=1 vitest run test/live",
+    "verify": "node scripts/verify.mjs"
+  },
+  "dependencies": {
+    "disk": "1.11.0",
+    "esbuild": "0.28.2"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "ajv": "8.20.0",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  }
+}

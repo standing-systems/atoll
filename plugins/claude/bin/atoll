@@ -1,0 +1,42 @@
+#!/bin/sh
+# atoll: on the Bash tool's PATH while the plugin is enabled.
+# Prefers a project's pinned CLI (node_modules/.bin/atoll), so Claude, CI, and the person run the same
+# version; otherwise runs the plugin's bundled single-file build. Never contacts the network itself.
+plugin_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+bundle="$plugin_root/dist/atoll.mjs"
+
+# The check_on_edit option (plugin.json userConfig) turns the PostToolUse hook off without starting node.
+if [ "${1-}" = hook ] && [ "${2-}" = check-on-edit ] && [ "${CLAUDE_PLUGIN_OPTION_CHECK_ON_EDIT-}" = false ]; then
+  exit 0
+fi
+
+ATOLL_HOST=claude
+ATOLL_PLUGIN_DIST="$plugin_root/dist"
+export ATOLL_HOST ATOLL_PLUGIN_DIST
+
+dir=$(pwd)
+while :; do
+  if [ -x "$dir/node_modules/.bin/atoll" ]; then
+    ATOLL_LAUNCHER=project-pin
+    export ATOLL_LAUNCHER
+    exec "$dir/node_modules/.bin/atoll" "$@"
+  fi
+  [ "$dir" = "/" ] && break
+  dir=$(dirname -- "$dir")
+done
+
+# A hook never fails an edit: without node or a built CLI it stays silent.
+if [ "${1-}" = hook ] && { ! command -v node >/dev/null 2>&1 || [ ! -f "$bundle" ]; }; then
+  exit 0
+fi
+if ! command -v node >/dev/null 2>&1; then
+  echo "atoll: Node.js 22.19 or later is required (node was not found on PATH)" >&2
+  exit 127
+fi
+if [ ! -f "$bundle" ]; then
+  echo "atoll: the plugin's CLI isn't built ($bundle is missing). Point this project's @standing-systems/atoll devDependency at a checkout of Atoll (file:/path/to/atoll), or run npm run build in the Atoll repository." >&2
+  exit 127
+fi
+ATOLL_LAUNCHER=plugin-bundle
+export ATOLL_LAUNCHER
+exec node "$bundle" "$@"

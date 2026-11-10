@@ -1,0 +1,5 @@
+node_modules/
+.atoll-local/
+.env
+.env.*
+!.env.example

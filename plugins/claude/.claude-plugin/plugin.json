@@ -1,0 +1,25 @@
+{
+  "name": "atoll",
+  "displayName": "Atoll",
+  "version": "0.1.0",
+  "description": "Design, build, test, run, inspect, and change standing agents that live on Archil disks: work you hand off that stays on duty, keeps its memory in files, and asks you before it acts in your name.",
+  "author": {
+    "name": "Jared McFarland"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "archil",
+    "agents",
+    "standing-systems",
+    "journal",
+    "typescript"
+  ],
+  "userConfig": {
+    "check_on_edit": {
+      "type": "boolean",
+      "title": "Check the atoll on edit",
+      "description": "After Claude writes or edits a file in an atoll project, run atoll check and tell Claude about hard errors only. Silent when the check is clean.",
+      "default": true
+    }
+  }
+}

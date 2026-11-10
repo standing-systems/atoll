@@ -1,0 +1,24 @@
+{
+  "name": "__ATOLL_NAME__",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "check": "atoll check",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "verify": "atoll check && vitest run"
+  },
+  "atoll": {
+    "entry": "system.ts"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "@standing-systems/atoll": "__ATOLL_DEP__",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  },
+  "engines": {
+    "node": ">=22.19"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "atoll",
+  "version": "0.1.0",
+  "description": "Codex workflows for Atoll: design, build, test, run, inspect, and change standing agents that live on Archil disks.",
+  "author": {
+    "name": "Jared McFarland"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "archil",
+    "agents",
+    "standing-systems",
+    "journal",
+    "typescript"
+  ],
+  "extensions": {
+    "com.openai": {
+      "onboardingSkill": "./skills/setup-atoll-project/SKILL.md",
+      "interface": {
+        "displayName": "Atoll",
+        "shortDescription": "Standing agents on Archil disks",
+        "capabilities": []
+      }
+    }
+  }
+}

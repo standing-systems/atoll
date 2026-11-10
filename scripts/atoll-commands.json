@@ -1,0 +1,157 @@
+{
+  "$comment": "The atoll commands the plugins' skills may name. scripts/validate-plugins.mjs fails when a skill names a command or a subcommand that isn't here, or pre-approves one in allowed-tools that isn't read-only. The CLI's own command table in src/cli/main.ts matches this list.",
+  "globalFlags": [
+    "--dir",
+    "--disk",
+    "--json"
+  ],
+  "exitCodes": {
+    "0": "ok",
+    "1": "a check failed",
+    "2": "usage",
+    "3": "not in an atoll project"
+  },
+  "commands": [
+    {
+      "name": "doctor",
+      "usage": "atoll doctor [--online] [--json]",
+      "summary": "The environment, credentials (never printed), and region; contacts Archil only with --online",
+      "readOnly": true
+    },
+    {
+      "name": "init",
+      "usage": "atoll init <dir> [--template release-radar|promise-keeper|blank]",
+      "summary": "Scaffold a project",
+      "readOnly": false
+    },
+    {
+      "name": "create",
+      "usage": "atoll create <name>",
+      "summary": "Create the Archil disk and lay out an empty atoll",
+      "readOnly": false
+    },
+    {
+      "name": "push",
+      "usage": "atoll push [--disk <d>]",
+      "summary": "Bundle system.ts, store it on the disk, make it current, checkpoint",
+      "readOnly": false
+    },
+    {
+      "name": "send",
+      "usage": "atoll send <to> <type> [json]",
+      "summary": "Deliver an event",
+      "readOnly": false
+    },
+    {
+      "name": "tick",
+      "usage": "atoll tick",
+      "summary": "Run turns until the inbox is empty",
+      "readOnly": false
+    },
+    {
+      "name": "status",
+      "usage": "atoll status [address] [--json]",
+      "summary": "The five answers",
+      "readOnly": true
+    },
+    {
+      "name": "why",
+      "usage": "atoll why <path|event-id|seq>",
+      "summary": "The turn that produced something, and its cause chain",
+      "readOnly": true
+    },
+    {
+      "name": "log",
+      "usage": "atoll log [--since <dur>] [--part <addr>]",
+      "summary": "Turns and effect outcomes",
+      "readOnly": true
+    },
+    {
+      "name": "asks",
+      "usage": "atoll asks",
+      "summary": "Questions waiting for the owner",
+      "readOnly": true
+    },
+    {
+      "name": "answer",
+      "usage": "atoll answer <ask-id> <option> [--payload <json>]",
+      "summary": "Answer a question",
+      "readOnly": false
+    },
+    {
+      "name": "check",
+      "usage": "atoll check [--json]",
+      "summary": "The declaration, the six promises, idle parts, unattributed files, stale-runner records",
+      "readOnly": true
+    },
+    {
+      "name": "replay",
+      "usage": "atoll replay [--code <bundle>]",
+      "summary": "Re-handle recorded history through a code version, in a temporary directory",
+      "readOnly": true
+    },
+    {
+      "name": "try",
+      "usage": "atoll try",
+      "summary": "Replay recorded history through the working copy's code and diff, in a temporary directory",
+      "readOnly": true
+    },
+    {
+      "name": "fork",
+      "usage": "atoll fork [--checkpoint <name>]",
+      "summary": "Branch the disk",
+      "readOnly": false
+    },
+    {
+      "name": "checkpoint",
+      "usage": "atoll checkpoint <name>",
+      "summary": "Checkpoint the disk",
+      "readOnly": false
+    },
+    {
+      "name": "door",
+      "usage": "atoll door up|down|url|token",
+      "summary": "The sandbox that sleeps until a request wakes it",
+      "subcommands": [
+        "up",
+        "down",
+        "url",
+        "token"
+      ],
+      "readOnly": false
+    },
+    {
+      "name": "clock",
+      "usage": "atoll clock [--crontab|--launchd|--github|--door] [--cron <expr>] [--write <path>]",
+      "summary": "Print or write configuration for something outside to call atoll tick; never overwrites a file",
+      "readOnly": false
+    },
+    {
+      "name": "serve",
+      "usage": "atoll serve",
+      "summary": "The door's HTTP server",
+      "readOnly": false
+    },
+    {
+      "name": "hook",
+      "usage": "atoll hook check-on-edit",
+      "summary": "The Claude Code plugin's PostToolUse hook: hard check errors only, always exit 0",
+      "subcommands": [
+        "check-on-edit"
+      ],
+      "readOnly": true
+    },
+    {
+      "name": "ls",
+      "usage": "atoll ls [prefix]",
+      "summary": "List an atoll's files through the object API, even on a disk you can't mount",
+      "readOnly": true
+    },
+    {
+      "name": "cat",
+      "usage": "atoll cat <path>",
+      "summary": "Print an atoll file through the object API",
+      "readOnly": true
+    }
+  ]
+}

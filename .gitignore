@@ -1,0 +1,12 @@
+node_modules/
+dist/
+!plugins/*/dist/
+coverage/
+*.log
+.DS_Store
+.env
+.env.*
+**/.atoll-local/
+.claude/settings.local.json
+/scratch/
+docs/research/

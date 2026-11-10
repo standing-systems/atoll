@@ -1,0 +1,15 @@
+{
+  "name": "atoll",
+  "description": "The Atoll plugin for Claude Code: standing agents that live on Archil disks.",
+  "owner": {
+    "name": "Jared McFarland"
+  },
+  "plugins": [
+    {
+      "name": "atoll",
+      "source": "./plugins/claude",
+      "description": "Design, build, test, run, inspect, and change standing agents that live on Archil disks.",
+      "category": "development"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+---
+name: setup-atoll-project
+description: Get started with Atoll (standing agents that live on Archil disks). Check the environment with `atoll doctor`, scaffold a new project with `atoll init`, and pass its first check and tests. Use when someone asks how to start, what atoll is, or wants a new atoll project.
+---
+
+1. Run `atoll doctor`. The plugin bundles its CLI: if `atoll` is absent from PATH, use `node <plugin-root>/bin/atoll.js` for every command. Node.js 22.19 or later is required. Report each line it marks `fix` with what to do about it. Never print, ask for, or repeat a credential, and never open `.env`; the doctor says whether the Archil API key is set, and whether it came from `.env`, without showing it, and contacts Archil only when the person runs `atoll doctor --online`. Local atolls need no credentials at all.
+2. Choose a new or empty directory with the person, and never scaffold into one that has files without asking. Run `atoll init <dir>` for the one-part starter (a reminder that waits on the disk until its time), or add `--template release-radar` (a deterministic npm release watcher) or `--template promise-keeper` (a model effect, asks, and an approval spent once).
+3. In the new project, run `npm install` (it needs the npm registry), then `npm run verify`, which runs `atoll check` and then the tests. Report the real result; a run that couldn't start is not a pass.
+4. Explain the layout in a few lines: `system.ts` declares the parts, handlers, effects, schedules, and budgets; `CHARTER.md` says what it is for and what it must never do, in the owner's voice; `test/` tests it against a local atoll with `@standing-systems/atoll/testing`; `AGENTS.md` holds the rules that always apply; `.atoll-local/` is the local atoll that commands use until `package.json` names a disk.
+5. Offer one next step: `design-atoll` to shape the real system from what the person wants kept standing. Creating a disk, pushing code, and installing a clock come later, as a plan for the person (`run-atoll`).
+
+Use the [shared Atoll conventions](references/workflow.md) when needed. Completion requires the commands to have run and their real output to be reported; report a blocked command precisely. Never push code, create a disk, start a door, or install a clock: give the person the plan and the exact commands. The person's instructions take precedence.
