@@ -1,0 +1,69 @@
+# Answer one of the upgrade steward's questions from the Actions tab, then tick so it acts on the answer.
+# The questions are listed at the end of every "Atoll tick" run. An approval of a pull request is spent
+# on exactly the upgrade the question names.
+
+name: Atoll answer
+
+on:
+  workflow_dispatch:
+    inputs:
+      ask:
+        description: The question's ID, such as q73.0
+        required: true
+        type: string
+      answer:
+        description: The option to choose
+        required: true
+        default: approve
+        type: choice
+        options:
+          - approve
+          - deny
+
+permissions:
+  contents: write
+
+concurrency:
+  group: atoll-upgrade-steward
+  cancel-in-progress: false
+
+env:
+  DISK: upgrade-steward
+  ARCHIL_API_KEY: ${{ secrets.ARCHIL_API_KEY }}
+  ARCHIL_REGION: ${{ vars.ARCHIL_REGION || secrets.ARCHIL_REGION }}
+
+jobs:
+  answer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build the CLI from this commit
+        run: npm ci --no-audit --no-fund && npm run build
+
+      - name: Answer, then tick
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          # Read from the environment, never pasted into the command.
+          ASK: ${{ inputs.ask }}
+          ANSWER: ${{ inputs.answer }}
+        run: node dist/atoll.mjs answer "$ASK" "$ANSWER" --disk "$DISK"
+
+      - name: Say where things stand
+        if: always()
+        run: |
+          {
+            node dist/atoll.mjs status --disk "$DISK"
+            echo
+            echo "## Questions waiting for an answer"
+            echo
+            echo '```'
+            node dist/atoll.mjs asks --disk "$DISK"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

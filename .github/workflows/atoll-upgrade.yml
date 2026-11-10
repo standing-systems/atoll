@@ -1,0 +1,77 @@
+# This repository's copy of examples/upgrade-steward/github/atoll-upgrade.yml, with one step added: Atoll
+# builds its CLI into the tree (plugins/*/dist), so a dependency that goes into that bundle has to be
+# built in again.
+#
+# When I approve an upgrade the steward has tried, it sends this repository a repository_dispatch event
+# named atoll-upgrade. This workflow makes the change the trial made (one `npm install` of one version),
+# pushes it to a branch, and opens the pull request with the repository's own token.
+
+name: Atoll upgrade
+
+on:
+  repository_dispatch:
+    types: [atoll-upgrade]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  propose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Everything the event carries is read as text from the environment, never pasted into a command.
+      PACKAGE: ${{ github.event.client_payload.package }}
+      VERSION: ${{ github.event.client_payload.version }}
+      FROM: ${{ github.event.client_payload.from }}
+      SAVE: ${{ github.event.client_payload.save }}
+      TRIED_AT: ${{ github.event.client_payload.head }}
+      TRIAL: ${{ github.event.client_payload.trial }}
+      BRANCH: ${{ github.event.client_payload.branch }}
+      EVIDENCE: ${{ github.event.client_payload.evidence }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check what was asked for
+        run: |
+          echo "$PACKAGE" | grep -Eq '^(@[a-z0-9~-][a-z0-9._~-]*/)?[a-z0-9~-][a-z0-9._~-]*$' || { echo "Not a package name: $PACKAGE"; exit 1; }
+          echo "$VERSION" | grep -Eq '^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$' || { echo "Not a version: $VERSION"; exit 1; }
+          echo "$SAVE" | grep -Eq '^--save-(prod|dev|optional)( --save-exact| --save-prefix=~)?$' || { echo "Not the flags the steward sends: $SAVE"; exit 1; }
+
+      - name: Make the change the trial made
+        # $SAVE is one or two flags, checked above, so it is left unquoted to split into them.
+        run: npm install --no-audit --no-fund --ignore-scripts $SAVE "$PACKAGE@$VERSION"
+
+      - name: Build it into the tree
+        run: npm run build
+
+      - name: Open the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet; then
+            echo "Nothing to propose: $PACKAGE is already at $VERSION here."
+            exit 0
+          fi
+          name="atoll/$(echo "$PACKAGE" | tr -d '@' | tr '/' '-')-$VERSION"
+          title="Upgrade $PACKAGE from ${FROM:-its current version} to $VERSION"
+          {
+            echo "An upgrade steward tried this on a copy of the checkout at \`$TRIED_AT\`, and the tests passed."
+            echo
+            echo "- Trial: \`$TRIAL\`"
+            echo "- The checkout the trial left: Archil branch \`$BRANCH\`"
+            echo "- Evidence: \`$EVIDENCE\`"
+            echo
+            echo "This branch was made here by running \`npm install $SAVE $PACKAGE@$VERSION\` and \`npm run build\`."
+          } > "$RUNNER_TEMP/body.md"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --create "$name"
+          git commit --all --message "$title"
+          git push --force --set-upstream origin "$name"
+          gh pr create --title "$title" --body-file "$RUNNER_TEMP/body.md" || gh pr edit "$name" --title "$title" --body-file "$RUNNER_TEMP/body.md"

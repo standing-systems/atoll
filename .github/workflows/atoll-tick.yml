@@ -1,0 +1,79 @@
+# The clock for the upgrade steward that keeps this repository (examples/upgrade-steward). Archil has no
+# timers, so something outside has to call `atoll tick`; here it is GitHub Actions, twice an hour. The
+# steward's own schedules are six-hourly, so most ticks find nothing due.
+#
+# It needs ARCHIL_API_KEY as a repository secret, and ARCHIL_REGION as a repository variable or secret.
+# Until the key is there, a run does nothing and says so.
+#
+# The tick is also where an approved pull request is asked for: `pr.open` sends this repository a
+# repository_dispatch event with this run's own token, which atoll-upgrade.yml answers.
+
+name: Atoll tick
+
+on:
+  schedule:
+    # Off the hour: GitHub starts scheduled runs late when many are due at :00.
+    - cron: "7,37 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  # Sending a repository_dispatch event needs write access to the repository's contents.
+  contents: write
+
+# One tick at a time, shared with atoll-answer.yml. The lease would hold a second one off anyway.
+concurrency:
+  group: atoll-upgrade-steward
+  cancel-in-progress: false
+
+env:
+  DISK: upgrade-steward
+  ARCHIL_API_KEY: ${{ secrets.ARCHIL_API_KEY }}
+  ARCHIL_REGION: ${{ vars.ARCHIL_REGION || secrets.ARCHIL_REGION }}
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check the key is here
+        id: key
+        run: |
+          if [ -n "$ARCHIL_API_KEY" ] && [ -n "$ARCHIL_REGION" ]; then
+            echo "set=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::ARCHIL_API_KEY or ARCHIL_REGION isn't set for this repository, so there is nothing to tick."
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.set == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.key.outputs.set == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build the CLI from this commit
+        if: steps.key.outputs.set == 'true'
+        run: npm ci --no-audit --no-fund && npm run build
+
+      - name: Tick
+        if: steps.key.outputs.set == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node dist/atoll.mjs tick --disk "$DISK"
+
+      - name: Say where things stand
+        if: always() && steps.key.outputs.set == 'true'
+        run: |
+          {
+            node dist/atoll.mjs status --disk "$DISK"
+            echo
+            echo "## Questions waiting for an answer"
+            echo
+            echo '```'
+            node dist/atoll.mjs asks --disk "$DISK"
+            echo '```'
+            echo
+            echo "Answer one from the Actions tab: run the \"Atoll answer\" workflow with its ID."
+          } >> "$GITHUB_STEP_SUMMARY"
