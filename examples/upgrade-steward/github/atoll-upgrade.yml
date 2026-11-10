@@ -34,11 +34,14 @@ jobs:
       BRANCH: ${{ github.event.client_payload.branch }}
       EVIDENCE: ${{ github.event.client_payload.evidence }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          # The Node whose npm writes this repository's lockfile, which is also the one the trial ran on
+          # (Archil's microVMs have Node 24). An older npm rewrites parts of the lockfile that have nothing
+          # to do with the upgrade.
+          node-version: 24
 
       - name: Check what was asked for
         run: |
